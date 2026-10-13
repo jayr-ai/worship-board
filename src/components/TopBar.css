@@ -1,0 +1,111 @@
+.topbar {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+  border-bottom: 1px solid transparent;
+}
+
+.topbar--locked {
+  border-bottom-color: var(--gold-accent);
+}
+
+.topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--gold-accent);
+  margin: 0;
+}
+
+.topbar__set {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar__toggle {
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.topbar__toggle--active {
+  background: var(--gold-a);
+  color: #0b1530;
+  border-color: var(--gold-a);
+}
+
+.topbar__btn {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.topbar__btn--stop {
+  background: var(--text-primary);
+  color: #0b1530;
+  border-color: var(--text-primary);
+}
+
+.topbar__master {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+}
+
+.topbar__master-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.topbar__master-slider {
+  width: 90px;
+  accent-color: var(--gold-a);
+}
+
+.topbar__master-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold-a);
+  min-width: 34px;
+}

@@ -1,0 +1,87 @@
+import { Fader } from './Fader';
+import { SegmentedControl } from './SegmentedControl';
+import { Chip } from './Chip';
+import './AmbientSection.css';
+
+interface AmbientSectionProps {
+  keys: string[];
+  activeKey: string | null;
+  quality: 'major' | 'minor';
+  faderValue: number;
+  faderDefault: number;
+  faderMuted: boolean;
+  onKeyPointerDown: (key: string) => void;
+  onQualityChange: (quality: 'major' | 'minor') => void;
+  onFaderChange: (value: number) => void;
+  onFaderMuteToggle: () => void;
+  onFadeOut: () => void;
+}
+
+export function AmbientSection({
+  keys,
+  activeKey,
+  quality,
+  faderValue,
+  faderDefault,
+  faderMuted,
+  onKeyPointerDown,
+  onQualityChange,
+  onFaderChange,
+  onFaderMuteToggle,
+  onFadeOut,
+}: AmbientSectionProps) {
+  return (
+    <section className={`ambient ${faderMuted ? 'ambient--muted' : ''}`}>
+      <header className="ambient__header">
+        <span className="ambient__badge">4</span>
+        <div className="ambient__heading">
+          <h2 className="ambient__title">Ambient Pads</h2>
+          <p className="ambient__subtitle">Sustained key drone</p>
+        </div>
+      </header>
+
+      <div className="ambient__body">
+        <div className="ambient__left">
+          <SegmentedControl
+            options={[
+              { value: 'major', label: 'Major' },
+              { value: 'minor', label: 'Minor' },
+            ]}
+            value={quality}
+            onChange={onQualityChange}
+          />
+
+          <div className="ambient__grid">
+            {keys.map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={`ambient__key ${activeKey === key ? 'ambient__key--active' : ''}`}
+                onPointerDown={() => onKeyPointerDown(key)}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+
+          <div className="ambient__footer">
+            <Chip label="PAD SOUND" value="Warm Pad" />
+            <Chip label="CROSSFADE KEYS" value="2 sec" />
+            <button type="button" className="ambient__fadeout" onClick={onFadeOut}>
+              FADE OUT
+            </button>
+          </div>
+        </div>
+
+        <Fader
+          accent="mint"
+          value={faderValue}
+          defaultValue={faderDefault}
+          muted={faderMuted}
+          onChange={onFaderChange}
+          onToggleMute={onFaderMuteToggle}
+        />
+      </div>
+    </section>
+  );
+}

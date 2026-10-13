@@ -1,0 +1,122 @@
+.section {
+  flex-shrink: 0;
+  height: 100%;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 0.2s;
+}
+
+.section--muted {
+  opacity: 0.55;
+}
+
+.section__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section__badge {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif;
+  color: #0b1530;
+}
+
+.section__badge--gold {
+  background: var(--gold-a);
+}
+.section__badge--coral {
+  background: var(--coral-a);
+}
+.section__badge--sky {
+  background: var(--sky-a);
+}
+.section__badge--mint {
+  background: var(--mint-a);
+}
+
+.section__heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.section__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: 0.05em;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.section__title--gold {
+  color: var(--gold-a);
+}
+.section__title--coral {
+  color: var(--coral-a);
+}
+.section__title--sky {
+  color: var(--sky-a);
+}
+.section__title--mint {
+  color: var(--mint-a);
+}
+
+.section__subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.section__edit {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.section__body {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  min-height: 0;
+}
+
+.section__left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.section__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 98px);
+  grid-template-rows: repeat(5, 98px);
+  gap: 8px;
+  justify-content: center;
+}
+
+.section__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

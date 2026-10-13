@@ -1,0 +1,117 @@
+.pad {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px;
+  border-radius: 12px;
+  border: none;
+  overflow: hidden;
+  font-family: 'Barlow', sans-serif;
+}
+
+.pad--gold {
+  --hi: var(--gold-hi);
+  --a: var(--gold-a);
+  --b: var(--gold-b);
+  --rgb: var(--gold-rgb);
+}
+.pad--coral {
+  --hi: var(--coral-hi);
+  --a: var(--coral-a);
+  --b: var(--coral-b);
+  --rgb: var(--coral-rgb);
+}
+.pad--sky {
+  --hi: var(--sky-hi);
+  --a: var(--sky-a);
+  --b: var(--sky-b);
+  --rgb: var(--sky-rgb);
+}
+.pad--mint {
+  --hi: var(--mint-hi);
+  --a: var(--mint-a);
+  --b: var(--mint-b);
+  --rgb: var(--mint-rgb);
+}
+
+.pad--empty {
+  background: linear-gradient(145deg, rgba(var(--rgb), 0.16), rgba(var(--rgb), 0.04));
+  border: 1.5px dashed var(--tile-border-alt);
+  justify-content: center;
+  align-items: center;
+}
+
+.pad--assigned {
+  background: linear-gradient(145deg, var(--a), var(--b));
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  color: #0b1530;
+}
+
+.pad--assigned.pad--active {
+  background: linear-gradient(145deg, #ffffff 0%, var(--hi) 45%, var(--a) 100%);
+  border: 2px solid #ffffff;
+  box-shadow:
+    0 0 0 2px var(--hi),
+    0 0 16px 5px var(--a),
+    0 0 40px 14px rgba(var(--rgb), 0.7),
+    inset 0 0 20px rgba(255, 255, 255, 0.6);
+  z-index: 2;
+}
+
+.pad__empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.pad__plus {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.pad__assign-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pad__title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: left;
+  color: #0b1530;
+}
+
+.pad__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.pad__chip {
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid rgba(11, 21, 48, 0.4);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: #0b1530;
+}
+
+.pad__duration {
+  font-size: 11px;
+  color: #0b1530;
+}
+
+.pad__progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  width: 40%;
+  background: #0b1530;
+}
