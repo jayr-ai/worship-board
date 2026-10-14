@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import './Sheet.css';
 import './SettingsSheet.css';
 
@@ -9,6 +10,11 @@ interface SettingsSheetProps {
   onToggleLockFadersToo: () => void;
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+}
+
 export function SettingsSheet({
   duckAmbientToo,
   lockFadersToo,
@@ -16,6 +22,18 @@ export function SettingsSheet({
   onToggleDuckAmbientToo,
   onToggleLockFadersToo,
 }: SettingsSheetProps) {
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  const [usage, setUsage] = useState<{ used: number; quota: number } | null>(null);
+
+  useEffect(() => {
+    navigator.storage?.persisted?.().then(setPersisted).catch(() => setPersisted(null));
+    navigator.storage?.estimate?.().then((estimate) => {
+      if (estimate.usage != null && estimate.quota != null) {
+        setUsage({ used: estimate.usage, quota: estimate.quota });
+      }
+    }).catch(() => {});
+  }, []);
+
   return (
     <div className="sheet-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet-panel">
@@ -63,6 +81,20 @@ export function SettingsSheet({
             Auto-Duck amount (−6 dB), attack (40 ms) and release (700 ms) use the
             spec's defaults and aren't tunable yet.
           </p>
+
+          <div className="settings__storage">
+            <div className="settings__row-title">Storage</div>
+            <div className="settings__row-sub">
+              {persisted === true && 'Persistent storage granted — iOS is far less likely to evict your library under storage pressure.'}
+              {persisted === false && "Persistent storage wasn't granted yet. It's requested automatically; back up regularly just in case."}
+              {persisted === null && "This browser doesn't report persistent storage status."}
+            </div>
+            {usage && (
+              <div className="settings__row-sub">
+                Using {formatBytes(usage.used)} of {formatBytes(usage.quota)} available.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

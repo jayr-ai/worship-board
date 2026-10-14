@@ -6,33 +6,14 @@ import { useUIStore } from '../store/useUIStore';
 import { usePlaybackStore } from '../store/usePlaybackStore';
 import type { TriggerMode } from '../types';
 import { audioEngine } from './AudioEngine';
+import { FLASH_TOTAL_MS, flashFactor, pulseFactor } from './glowMath';
 
 export type GlowSection = 'clips' | 'sfx' | 'bg' | 'ambient';
-
-const PULSE_PERIOD_SEC = 1.6;
-const PULSE_MIN = 0.75;
-const PULSE_MAX = 1;
-
-const FLASH_RISE_MS = 60;
-const FLASH_DECAY_MS = 450;
-const FLASH_TOTAL_MS = FLASH_RISE_MS + FLASH_DECAY_MS;
 
 interface RegistryEntry {
   el: HTMLElement;
   section: GlowSection;
   mode?: TriggerMode;
-}
-
-function pulseFactor(now: number): number {
-  const phase = (now / 1000 / PULSE_PERIOD_SEC) * Math.PI * 2;
-  const t = (Math.sin(phase) + 1) / 2; // 0..1, smooth ease via sine
-  return PULSE_MIN + t * (PULSE_MAX - PULSE_MIN);
-}
-
-function flashFactor(elapsedMs: number): number {
-  if (elapsedMs < FLASH_RISE_MS) return elapsedMs / FLASH_RISE_MS;
-  const t = Math.min(1, (elapsedMs - FLASH_RISE_MS) / FLASH_DECAY_MS);
-  return (1 - t) ** 3; // ease-out decay
 }
 
 class GlowEngine {

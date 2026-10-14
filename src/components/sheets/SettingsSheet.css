@@ -43,3 +43,10 @@
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+.settings__storage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 10px;
+}

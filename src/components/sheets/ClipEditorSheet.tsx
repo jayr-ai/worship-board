@@ -36,6 +36,7 @@ export function ClipEditorSheet({
   const [peaks, setPeaks] = useState<Float32Array | null>(null);
   const [durationSec, setDurationSec] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [waveformError, setWaveformError] = useState(false);
   const [startSec, setStartSec] = useState(pad.startSec ?? 0);
   const [endSec, setEndSec] = useState(pad.endSec ?? 18);
   const [fadeOutSec, setFadeOutSec] = useState(pad.fadeOutSec ?? defaultFadeOutSec);
@@ -55,9 +56,11 @@ export function ClipEditorSheet({
   useEffect(() => {
     if (!songId) return;
     setLoading(true);
+    setWaveformError(false);
     audioEngine.getWaveform(songId).then((result) => {
       if (!result) {
         setLoading(false);
+        setWaveformError(true);
         return;
       }
       setPeaks(result.peaks);
@@ -246,6 +249,15 @@ export function ClipEditorSheet({
 
         <div className="sheet-body clip-editor__body">
           {loading && <p className="clip-editor__loading">Loading waveform…</p>}
+
+          {waveformError && (
+            <div className="clip-editor__error">
+              <p>This file couldn't be decoded. It may be an unsupported format or corrupted.</p>
+              <button type="button" className="sheet-btn" onClick={() => setSongId(null)}>
+                Choose a Different Song
+              </button>
+            </div>
+          )}
 
           {!loading && peaks && (
             <>

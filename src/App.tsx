@@ -13,6 +13,8 @@ import { ClipEditorSheet } from './components/sheets/ClipEditorSheet';
 import { SetsSheet } from './components/sheets/SetsSheet';
 import { SettingsSheet } from './components/sheets/SettingsSheet';
 import { useUIStore } from './store/useUIStore';
+import { useToastStore } from './store/useToastStore';
+import { ToastStack } from './components/ToastStack';
 import { usePlaybackStore } from './store/usePlaybackStore';
 import { useSetStore } from './store/useSetStore';
 import { useLibraryStore } from './store/useLibraryStore';
@@ -84,15 +86,20 @@ function App() {
   }, []);
 
   // Locking mid-edit should back out of edit mode and close config sheets,
-  // not leave them open but inert.
-  useEffect(() => {
-    if (!locked) return;
-    setEditingSection(null);
-    setEditingPadId(null);
-    setLibraryOpen(false);
-    setSetsOpen(false);
-    setSettingsOpen(false);
-  }, [locked]);
+  // not leave them open but inert. Driven from the toggle itself rather
+  // than an effect on `locked`, since this is a direct response to the
+  // user's own action, not a sync with an external system.
+  const handleToggleLocked = () => {
+    const willLock = !useUIStore.getState().locked;
+    toggleLocked();
+    if (willLock) {
+      setEditingSection(null);
+      setEditingPadId(null);
+      setLibraryOpen(false);
+      setSetsOpen(false);
+      setSettingsOpen(false);
+    }
+  };
 
   const clipsPads = banks.clips === 'bankA' ? clipsBankA : clipsBankB;
   const sfxPads = banks.sfx === 'bankA' ? sfxBankA : sfxBankB;
@@ -114,12 +121,23 @@ function App() {
 
   const closePadEdit = () => setEditingPadId(null);
 
+  // Shared by the pad edit sheets' "Import New File" buttons: surfaces the
+  // real decode error as a toast instead of just doing nothing.
+  const importFileForPad = async (file: File) => {
+    const errorsBefore = useLibraryStore.getState().importErrors.length;
+    const [item] = await useLibraryStore.getState().importFiles([file]);
+    const newErrors = useLibraryStore.getState().importErrors.slice(errorsBefore);
+    if (newErrors.length > 0) useToastStore.getState().push(newErrors[0].message);
+    return item ?? null;
+  };
+
   const handleStopAll = () => void audioEngine.stopAll();
   const handleFadeAll = () => void audioEngine.fadeAll();
 
   return (
     <Stage>
       <AudioNotices />
+      <ToastStack />
       <TopBar
         setName={current.name}
         autoDuck={autoDuckEnabled}
@@ -128,7 +146,7 @@ function App() {
         masterValue={levels.master}
         masterDisabled={locked && lockFadersToo}
         onToggleAutoDuck={toggleAutoDuckEnabled}
-        onToggleLocked={toggleLocked}
+        onToggleLocked={handleToggleLocked}
         onTogglePulse={togglePulseAnimation}
         onFadeAll={handleFadeAll}
         onStopAll={handleStopAll}
@@ -303,7 +321,7 @@ function App() {
           onClose={closePadEdit}
           onAssign={(patch) => void updatePad(editingPad.id, patch)}
           onClear={() => void clearPad(editingPad.id)}
-          onImportNew={(file) => useLibraryStore.getState().importFiles([file]).then((r) => r[0] ?? null)}
+          onImportNew={importFileForPad}
         />
       )}
 
@@ -323,7 +341,7 @@ function App() {
           }
           onImportNew={(file) => {
             void (async () => {
-              const [item] = await useLibraryStore.getState().importFiles([file]);
+              const item = await importFileForPad(file);
               if (item) {
                 await updatePad(editingPad.id, {
                   libraryId: item.id,

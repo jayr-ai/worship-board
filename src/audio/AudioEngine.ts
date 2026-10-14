@@ -13,7 +13,9 @@ import { useLibraryStore } from '../store/useLibraryStore';
 import { useSetStore } from '../store/useSetStore';
 import { decodeLibraryItem, getTrimmedClipBuffer } from './clipBuffers';
 import { computePeaks } from './peaks';
+import { computeFadeSchedule } from './envelope';
 import { glowEngine } from './glowEngine';
+import { useToastStore } from '../store/useToastStore';
 
 const FADE_ALL_SEC = 3;
 const STOP_ALL_MS = 80;
@@ -296,17 +298,20 @@ class AudioEngine {
     }
 
     const buffer = await getTrimmedClipBuffer(ctx, pad.libraryId, pad.startSec, pad.endSec);
-    if (!buffer) return;
+    if (!buffer) {
+      useToastStore.getState().push(`Couldn't play "${pad.label ?? 'this clip'}" — the source file may be missing or corrupted.`);
+      return;
+    }
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
     const envelope = ctx.createGain();
     const peakGain = dbToGain(pad.trimDb ?? 0);
-    const fadeOutSec = Math.min(pad.fadeOutSec ?? 3, buffer.duration);
+    const { fadeStartSec } = computeFadeSchedule(buffer.duration, pad.fadeOutSec ?? 3);
     const now = ctx.currentTime;
     envelope.gain.setValueAtTime(peakGain, now);
-    envelope.gain.setValueAtTime(peakGain, now + Math.max(0, buffer.duration - fadeOutSec));
+    envelope.gain.setValueAtTime(peakGain, now + fadeStartSec);
     envelope.gain.linearRampToValueAtTime(0, now + buffer.duration);
 
     source.connect(envelope).connect(this.buses.clips.input);
@@ -352,15 +357,18 @@ class AudioEngine {
     this.stopAudition();
 
     const buffer = await getTrimmedClipBuffer(ctx, libraryId, startSec, endSec);
-    if (!buffer) return;
+    if (!buffer) {
+      useToastStore.getState().push("Couldn't decode that audio for preview.");
+      return;
+    }
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     const envelope = ctx.createGain();
-    const fade = Math.min(fadeOutSec, buffer.duration);
+    const { fadeStartSec } = computeFadeSchedule(buffer.duration, fadeOutSec);
     const now = ctx.currentTime;
     envelope.gain.setValueAtTime(1, now);
-    envelope.gain.setValueAtTime(1, now + Math.max(0, buffer.duration - fade));
+    envelope.gain.setValueAtTime(1, now + fadeStartSec);
     envelope.gain.linearRampToValueAtTime(0, now + buffer.duration);
 
     source.connect(envelope).connect(this.buses.clips.input);
@@ -401,7 +409,10 @@ class AudioEngine {
     }
 
     const buffer = await getSfxAudioBuffer(ctx, pad.libraryId);
-    if (!buffer) return;
+    if (!buffer) {
+      useToastStore.getState().push(`Couldn't play "${pad.label ?? 'this sound'}" — try re-importing the file.`);
+      return;
+    }
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
@@ -525,8 +536,15 @@ class AudioEngine {
     if (!pad.libraryId) return;
     await this.ensureStarted();
     const url = this.blobUrlForPad(pad);
-    if (!url) return;
-    await this.background!.playPad(pad, url, dbToGain(pad.trimDb ?? 0), crossfadeSec);
+    if (!url) {
+      useToastStore.getState().push(`Couldn't find "${pad.label ?? 'that song'}" in the library.`);
+      return;
+    }
+    try {
+      await this.background!.playPad(pad, url, dbToGain(pad.trimDb ?? 0), crossfadeSec);
+    } catch {
+      useToastStore.getState().push(`Couldn't play "${pad.label ?? 'that song'}" — the file may be unsupported.`);
+    }
   }
 
   toggleBackgroundPlayPause(): void {
