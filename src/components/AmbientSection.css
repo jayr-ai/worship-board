@@ -10,6 +10,8 @@
   flex-direction: column;
   gap: 10px;
   transition: opacity 0.2s;
+  /* Static glow (no animation) echoing the lit hexagon-grid reference. */
+  box-shadow: 0 0 28px -14px rgba(var(--accent-primary-rgb), 0.5);
 }
 
 .ambient--muted {

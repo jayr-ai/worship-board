@@ -1,14 +1,19 @@
 :root {
-  --stage-bg: #0b1530;
-  --panel-bg: #0f1b3d;
-  --panel-border: #22336a;
-  --tile-bg: #16254d;
-  --tile-border: #2b3e78;
-  --tile-border-alt: #3a4a7c;
-  --text-primary: #f4efe2;
-  --text-muted: #9fb0dd;
-  --text-secondary: #c9d3f0;
-  --gold-accent: #e4b93c;
+  /* "Vault" theme - a near-black violet chrome inspired by a glowing
+     hexagon-grid reference, with the original jewel-tone section/pad
+     accents (gold/coral/sky/mint/violet/rose) kept as-is so each section
+     and pad color stays instantly recognizable during a live set. */
+  --stage-bg: #0a0817;
+  --panel-bg: #120e24;
+  --panel-border: #2b2152;
+  --tile-bg: #1a1430;
+  --tile-border: #332a5c;
+  --tile-border-alt: #443870;
+  --text-primary: #f2eefb;
+  --text-muted: #a89cd4;
+  --text-secondary: #d2c8f0;
+  --accent-primary: #a78bfa;
+  --accent-primary-rgb: 167, 139, 250;
 
   --gold-hi: #ffe899;
   --gold-a: #f2c94c;

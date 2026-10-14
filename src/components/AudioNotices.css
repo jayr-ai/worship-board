@@ -2,9 +2,9 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(11, 21, 48, 0.92);
+  background: rgba(10, 8, 23, 0.92);
   border: none;
-  color: var(--gold-accent);
+  color: var(--accent-primary);
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 28px;
   font-weight: 700;

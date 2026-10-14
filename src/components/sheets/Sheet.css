@@ -1,7 +1,7 @@
 .sheet-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(11, 21, 48, 0.72);
+  background: rgba(10, 8, 23, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,7 +33,7 @@
   font-weight: 700;
   font-size: 20px;
   letter-spacing: 0.05em;
-  color: var(--gold-accent);
+  color: var(--accent-primary);
   margin: 0;
 }
 
