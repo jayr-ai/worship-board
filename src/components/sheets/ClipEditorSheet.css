@@ -76,25 +76,63 @@
   height: 100%;
 }
 
-.clip-editor__selection {
+/* Dims the audio outside the selected start/end range instead of tinting
+   the selection itself - makes the trim boundary obvious regardless of
+   what color the waveform gradient happens to be at that point. */
+.clip-editor__dim {
   position: absolute;
   top: 0;
   height: 100%;
-  background: rgba(120, 187, 255, 0.22);
-  border-left: 2px solid var(--sky-a);
-  border-right: 2px solid var(--sky-a);
+  background: rgba(10, 8, 23, 0.68);
+  pointer-events: none;
 }
 
+/* A thin, high-contrast boundary line rather than a thick block in the
+   same color as the waveform (which used to blend in). The clickable
+   area stays wide for touch/iPad dragging; only the visible line is
+   thin. A small colored flag at the top tells start (blue) from end
+   (coral) apart at a glance, using colors not present in the waveform
+   gradient so it never blends in. */
 .clip-editor__handle {
   position: absolute;
   top: 0;
-  width: 16px;
-  margin-left: -8px;
+  width: 32px;
+  margin-left: -16px;
   height: 100%;
-  background: var(--sky-a);
-  border-radius: 4px;
+  display: flex;
+  justify-content: center;
   touch-action: none;
   cursor: ew-resize;
+}
+
+.clip-editor__handle::before {
+  content: '';
+  width: 3px;
+  height: 100%;
+  background: var(--text-primary);
+  box-shadow: 0 0 0 1px rgba(10, 8, 23, 0.8), 0 0 10px rgba(10, 8, 23, 0.9);
+}
+
+.clip-editor__handle::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  filter: drop-shadow(0 1px 2px rgba(10, 8, 23, 0.8));
+}
+
+.clip-editor__handle--start::after {
+  left: 16px;
+  border-width: 8px 0 8px 10px;
+  border-color: transparent transparent transparent var(--sky-a);
+}
+
+.clip-editor__handle--end::after {
+  left: 6px;
+  border-width: 8px 10px 8px 0;
+  border-color: transparent var(--coral-a) transparent transparent;
 }
 
 .clip-editor__marker-flag {

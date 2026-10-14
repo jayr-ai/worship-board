@@ -92,7 +92,18 @@ export function ClipEditorSheet({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, width, WAVEFORM_HEIGHT);
-    ctx.fillStyle = '#78bbff';
+
+    // Multi-color gradient across the timeline (rose -> violet -> gold ->
+    // mint), inspired by the segmented rainbow waveform look in the Loop
+    // Connect reference, instead of a flat single-color fill.
+    const style = getComputedStyle(canvas);
+    const gradient = ctx.createLinearGradient(0, 0, width, 0);
+    gradient.addColorStop(0, style.getPropertyValue('--rose-a').trim());
+    gradient.addColorStop(0.33, style.getPropertyValue('--violet-a').trim());
+    gradient.addColorStop(0.66, style.getPropertyValue('--gold-a').trim());
+    gradient.addColorStop(1, style.getPropertyValue('--mint-a').trim());
+    ctx.fillStyle = gradient;
+
     const mid = WAVEFORM_HEIGHT / 2;
     const pxPerBucket = width / peaks.length;
     for (let i = 0; i < peaks.length; i++) {
@@ -289,10 +300,14 @@ export function ClipEditorSheet({
                   <canvas ref={canvasRef} className="clip-editor__canvas" />
 
                   <div
-                    className="clip-editor__selection"
+                    className="clip-editor__dim"
+                    style={{ left: 0, width: secToPx(startSec) }}
+                  />
+                  <div
+                    className="clip-editor__dim"
                     style={{
-                      left: secToPx(startSec),
-                      width: secToPx(endSec) - secToPx(startSec),
+                      left: secToPx(endSec),
+                      width: secToPx(durationSec) - secToPx(endSec),
                     }}
                   />
 
