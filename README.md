@@ -6,7 +6,7 @@ Live: https://jayr-ai.github.io/worship-board/
 
 ## Status
 
-**Phase 4 of 7: Song Clips.** The clip editor is live: waveform display, draggable trim handles, zoom, part markers (INTRO/VERSE/PRE-CHORUS/CHORUS/BRIDGE/TAG/OUTRO + custom) saved per song, audition, auto "Song | Section" labels, and sample-accurate fade-out on real playback. Exclusive mode (default on) crossfades between clips at 0.8s; tapping the same pad again fades it out over its own length. All four sections now play real audio and persist across restarts.
+**Phase 5 of 7: Glow system.** Every pad now pulses while sounding (Clips/Background/Ambient breathe at 1.6s, sustained Sound Effects modes too), flashes on trigger (one-shot Sound Effects), and fades its glow in real time together with the actual sound — including during an Ambient key or Background crossfade, where the outgoing pad visibly dims as the incoming one brightens. A PULSE toggle in the top bar swaps pulsing for a steady glow. All of it runs off a single rAF loop writing a CSS custom property directly to the DOM, so it never triggers a React re-render.
 
 See the build plan in the original spec for what's next.
 
