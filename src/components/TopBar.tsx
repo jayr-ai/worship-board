@@ -4,9 +4,11 @@ interface TopBarProps {
   setName: string;
   autoDuck: boolean;
   locked: boolean;
+  pulseAnimation: boolean;
   masterValue: number;
   onToggleAutoDuck: () => void;
   onToggleLocked: () => void;
+  onTogglePulse: () => void;
   onFadeAll: () => void;
   onStopAll: () => void;
   onMasterChange: (value: number) => void;
@@ -18,9 +20,11 @@ export function TopBar({
   setName,
   autoDuck,
   locked,
+  pulseAnimation,
   masterValue,
   onToggleAutoDuck,
   onToggleLocked,
+  onTogglePulse,
   onFadeAll,
   onStopAll,
   onMasterChange,
@@ -53,6 +57,13 @@ export function TopBar({
           onClick={onToggleLocked}
         >
           {locked ? '🔒 LOCK' : 'LOCK'}
+        </button>
+        <button
+          type="button"
+          className={`topbar__toggle ${pulseAnimation ? 'topbar__toggle--active' : ''}`}
+          onClick={onTogglePulse}
+        >
+          PULSE
         </button>
         <button type="button" className="topbar__btn" onClick={onFadeAll}>
           FADE ALL

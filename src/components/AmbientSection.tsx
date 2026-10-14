@@ -1,11 +1,11 @@
 import { Fader } from './Fader';
 import { SegmentedControl } from './SegmentedControl';
 import { Chip } from './Chip';
+import { AmbientKey } from './AmbientKey';
 import './AmbientSection.css';
 
 interface AmbientSectionProps {
   keys: string[];
-  activeKey: string | null;
   quality: 'major' | 'minor';
   pack: 'warm' | 'airy';
   faderValue: number;
@@ -21,7 +21,6 @@ interface AmbientSectionProps {
 
 export function AmbientSection({
   keys,
-  activeKey,
   quality,
   pack,
   faderValue,
@@ -57,14 +56,7 @@ export function AmbientSection({
 
           <div className="ambient__grid">
             {keys.map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={`ambient__key ${activeKey === key ? 'ambient__key--active' : ''}`}
-                onPointerDown={() => onKeyPointerDown(key)}
-              >
-                {key}
-              </button>
+              <AmbientKey key={key} note={key} onPointerDown={() => onKeyPointerDown(key)} />
             ))}
           </div>
 

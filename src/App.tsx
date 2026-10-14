@@ -49,6 +49,7 @@ function App() {
     locked,
     exclusiveClips,
     defaultClipFadeOutSec,
+    pulseAnimation,
     setLevel,
     toggleMute,
     setBank,
@@ -58,11 +59,11 @@ function App() {
     toggleLocked,
     toggleExclusiveClips,
     cycleDefaultClipFadeOut,
+    togglePulseAnimation,
   } = useUIStore();
 
   const activeSfxPadIds = usePlaybackStore((s) => s.activeSfxPadIds);
   const activeClipPadIds = usePlaybackStore((s) => s.activeClipPadIds);
-  const activeAmbientKey = usePlaybackStore((s) => s.activeAmbientKey);
   const bgPadId = usePlaybackStore((s) => s.bgPadId);
   const bgPlaying = usePlaybackStore((s) => s.bgPlaying);
   const bgLooping = usePlaybackStore((s) => s.bgLooping);
@@ -112,9 +113,11 @@ function App() {
         setName="Sunday Service · Oct 20"
         autoDuck={autoDuck}
         locked={locked}
+        pulseAnimation={pulseAnimation}
         masterValue={levels.master}
         onToggleAutoDuck={toggleAutoDuck}
         onToggleLocked={toggleLocked}
+        onTogglePulse={togglePulseAnimation}
         onFadeAll={handleFadeAll}
         onStopAll={handleStopAll}
         onMasterChange={(v) => setLevel('master', v)}
@@ -128,6 +131,7 @@ function App() {
           title="Song Clips"
           subtitle="Chorus / verse cuts"
           accent="gold"
+          glowSection="clips"
           pads={clipsPads}
           activePadIds={activeClipPadIds}
           showProgress
@@ -178,6 +182,7 @@ function App() {
           title="Sound Effects"
           subtitle="Claps, shouts, stings"
           accent="coral"
+          glowSection="sfx"
           pads={sfxPadsForDisplay}
           activePadIds={activeSfxPadIds}
           width={280}
@@ -215,6 +220,7 @@ function App() {
           title="Background"
           subtitle="Full songs"
           accent="sky"
+          glowSection="bg"
           pads={bgPadsForDisplay}
           activePadIds={bgPadId ? new Set([bgPadId]) : EMPTY_SET}
           showProgress
@@ -248,7 +254,6 @@ function App() {
 
         <AmbientSection
           keys={ambientKeys}
-          activeKey={activeAmbientKey}
           quality={ambientQuality}
           pack={ambientPack}
           faderValue={levels.ambient}

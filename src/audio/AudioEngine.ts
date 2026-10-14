@@ -13,6 +13,7 @@ import { useLibraryStore } from '../store/useLibraryStore';
 import { useAssignmentsStore } from '../store/useAssignmentsStore';
 import { decodeLibraryItem, getTrimmedClipBuffer } from './clipBuffers';
 import { computePeaks } from './peaks';
+import { glowEngine } from './glowEngine';
 
 const FADE_ALL_SEC = 3;
 const STOP_ALL_MS = 80;
@@ -32,11 +33,13 @@ interface ActiveSfxVoice {
   source: AudioBufferSourceNode;
   envelope: GainNode;
   mode: TriggerMode;
+  peakGain: number;
 }
 
 interface ActiveClipVoice {
   source: AudioBufferSourceNode;
   envelope: GainNode;
+  peakGain: number;
 }
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -50,7 +53,7 @@ class AudioEngine {
   private sfxVoices = new Map<string, ActiveSfxVoice>();
   private clipVoices = new Map<string, ActiveClipVoice>();
   private auditionVoice: { source: AudioBufferSourceNode; envelope: GainNode } | null = null;
-  private currentAmbientVoice: AmbientVoice | null = null;
+  private ambientVoicesByKey = new Map<string, AmbientVoice>();
   private ambientPack: AmbientPack = 'warm';
   private silentAudio: HTMLAudioElement | null = null;
   private wakeLock = new WakeLockManager();
@@ -189,6 +192,30 @@ class AudioEngine {
     setGain(this.masterGain.gain, faderValueToGain(levels.master));
   }
 
+  // ---- Glow (section 5): per-voice level, normalized 0..1 against each
+  // voice's own peak so a trimmed-down pad still reads "full" at its own
+  // volume. ---------------------------------------------------------------
+
+  getClipLevel(padId: string): number {
+    const voice = this.clipVoices.get(padId);
+    if (!voice) return 0;
+    return Math.min(1, voice.envelope.gain.value / voice.peakGain);
+  }
+
+  getSfxLevel(padId: string): number {
+    const voice = this.sfxVoices.get(padId);
+    if (!voice) return 0;
+    return Math.min(1, voice.envelope.gain.value / voice.peakGain);
+  }
+
+  getAmbientKeyLevel(key: string): number {
+    return this.ambientVoicesByKey.get(key)?.getLevel() ?? 0;
+  }
+
+  getBackgroundLevel(padId: string): number {
+    return this.background?.getPadLevel(padId) ?? 0;
+  }
+
   // ---- Song Clips (section 1) --------------------------------------------
 
   /** Waveform for the clip editor: cached on the library item after the
@@ -245,15 +272,21 @@ class AudioEngine {
     source.connect(envelope).connect(this.buses.clips.input);
     source.start();
 
-    this.clipVoices.set(pad.id, { source, envelope });
+    this.clipVoices.set(pad.id, { source, envelope, peakGain });
     usePlaybackStore.getState().setClipActive(pad.id, true);
 
     source.onended = () => {
-      this.clipVoices.delete(pad.id);
-      usePlaybackStore.getState().setClipActive(pad.id, false);
+      // Guard against a race where a retrigger already replaced this entry.
+      if (this.clipVoices.get(pad.id)?.source === source) {
+        this.clipVoices.delete(pad.id);
+        usePlaybackStore.getState().setClipActive(pad.id, false);
+      }
     };
   }
 
+  /** Schedules the fade-out ramp; the voice cleans itself up (map + active
+   * state) via its own 'ended' event once the ramp finishes, so its level
+   * stays readable by the glow loop throughout the fade (5.3). */
   private stopClipVoice(padId: string, fadeSec: number): void {
     const voice = this.clipVoices.get(padId);
     if (!voice || !this.ctx) return;
@@ -264,8 +297,6 @@ class AudioEngine {
     } catch {
       /* already stopped */
     }
-    this.clipVoices.delete(padId);
-    usePlaybackStore.getState().setClipActive(padId, false);
   }
 
   /** Clip editor preview: plays [startSec, endSec) with the given fade-out,
@@ -337,19 +368,26 @@ class AudioEngine {
     source.loop = mode !== 'oneshot';
 
     const envelope = ctx.createGain();
-    envelope.gain.value = dbToGain(pad.trimDb ?? 0);
+    const peakGain = dbToGain(pad.trimDb ?? 0);
+    envelope.gain.value = peakGain;
     source.connect(envelope).connect(this.buses.sfx.input);
     source.start();
 
-    this.sfxVoices.set(pad.id, { source, envelope, mode });
+    this.sfxVoices.set(pad.id, { source, envelope, mode, peakGain });
     usePlaybackStore.getState().setSfxActive(pad.id, true);
 
     if (mode === 'oneshot') {
-      source.onended = () => {
+      // Flash is independent of the real envelope (5.4): a fixed 60ms rise
+      // + 450ms decay regardless of the sample's actual length.
+      glowEngine.flash(pad.id);
+    }
+
+    source.onended = () => {
+      if (this.sfxVoices.get(pad.id)?.source === source) {
         this.sfxVoices.delete(pad.id);
         usePlaybackStore.getState().setSfxActive(pad.id, false);
-      };
-    }
+      }
+    };
   }
 
   triggerSfxUp(padId: string): void {
@@ -367,8 +405,6 @@ class AudioEngine {
     } catch {
       /* already stopped */
     }
-    this.sfxVoices.delete(padId);
-    usePlaybackStore.getState().setSfxActive(padId, false);
   }
 
   // ---- Ambient Pads (section 4) ------------------------------------------
@@ -378,15 +414,18 @@ class AudioEngine {
     const ctx = this.ctx!;
     const activeKey = usePlaybackStore.getState().activeAmbientKey;
 
-    if (activeKey === key && this.currentAmbientVoice) {
-      this.currentAmbientVoice.release();
-      this.currentAmbientVoice = null;
+    if (activeKey === key && this.ambientVoicesByKey.has(key)) {
+      const voice = this.ambientVoicesByKey.get(key)!;
+      voice.release();
+      this.scheduleAmbientRemoval(key, voice, voice.releaseSec);
       usePlaybackStore.getState().setAmbientKey(null);
       return;
     }
 
     const quality = useUIStore.getState().ambientQuality;
-    const previous = this.currentAmbientVoice;
+    const previousKey = activeKey;
+    const previousVoice = previousKey ? this.ambientVoicesByKey.get(previousKey) : undefined;
+
     const voice = new AmbientVoice(
       ctx,
       key,
@@ -396,21 +435,31 @@ class AudioEngine {
       this.reverbConvolver,
     );
 
-    if (previous) {
-      previous.release(AMBIENT_CROSSFADE_SEC);
+    if (previousVoice && previousKey) {
+      previousVoice.release(AMBIENT_CROSSFADE_SEC);
+      this.scheduleAmbientRemoval(previousKey, previousVoice, AMBIENT_CROSSFADE_SEC);
       voice.attack(AMBIENT_CROSSFADE_SEC);
     } else {
       voice.attack();
     }
 
-    this.currentAmbientVoice = voice;
+    this.ambientVoicesByKey.set(key, voice);
     usePlaybackStore.getState().setAmbientKey(key);
   }
 
+  private scheduleAmbientRemoval(key: string, voice: AmbientVoice, durationSec: number): void {
+    window.setTimeout(() => {
+      if (this.ambientVoicesByKey.get(key) === voice) this.ambientVoicesByKey.delete(key);
+    }, durationSec * 1000 + 150);
+  }
+
   fadeOutAmbient(): void {
-    if (!this.currentAmbientVoice) return;
-    this.currentAmbientVoice.release(AMBIENT_FADE_OUT_SEC);
-    this.currentAmbientVoice = null;
+    const key = usePlaybackStore.getState().activeAmbientKey;
+    if (!key) return;
+    const voice = this.ambientVoicesByKey.get(key);
+    if (!voice) return;
+    voice.release(AMBIENT_FADE_OUT_SEC);
+    this.scheduleAmbientRemoval(key, voice, AMBIENT_FADE_OUT_SEC);
     usePlaybackStore.getState().setAmbientKey(null);
   }
 
@@ -489,11 +538,11 @@ class AudioEngine {
     for (const padId of [...this.sfxVoices.keys()]) this.stopSfxVoice(padId, 0.01);
     for (const padId of [...this.clipVoices.keys()]) this.stopClipVoice(padId, 0.01);
     this.stopAudition();
-    if (this.currentAmbientVoice) {
-      this.currentAmbientVoice.dispose();
-      this.currentAmbientVoice = null;
-      usePlaybackStore.getState().setAmbientKey(null);
+    for (const [key, voice] of this.ambientVoicesByKey) {
+      voice.dispose();
+      this.ambientVoicesByKey.delete(key);
     }
+    usePlaybackStore.getState().setAmbientKey(null);
     this.background?.hardStop();
   }
 }

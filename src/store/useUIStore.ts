@@ -13,6 +13,7 @@ interface UIState {
   locked: boolean;
   exclusiveClips: boolean;
   defaultClipFadeOutSec: number;
+  pulseAnimation: boolean;
 
   setLevel: (section: keyof UIState['levels'], value: number) => void;
   toggleMute: (section: keyof UIState['muted']) => void;
@@ -23,6 +24,7 @@ interface UIState {
   toggleLocked: () => void;
   toggleExclusiveClips: () => void;
   cycleDefaultClipFadeOut: () => void;
+  togglePulseAnimation: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -35,6 +37,7 @@ export const useUIStore = create<UIState>((set) => ({
   locked: false,
   exclusiveClips: true,
   defaultClipFadeOutSec: 3,
+  pulseAnimation: true,
 
   setLevel: (section, value) =>
     set((state) => ({ levels: { ...state.levels, [section]: value } })),
@@ -53,4 +56,5 @@ export const useUIStore = create<UIState>((set) => ({
       const next = FADE_OUT_PRESETS[(idx + 1) % FADE_OUT_PRESETS.length];
       return { defaultClipFadeOutSec: next };
     }),
+  togglePulseAnimation: () => set((state) => ({ pulseAnimation: !state.pulseAnimation })),
 }));

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pad, type PadAccent } from './Pad';
+import type { PadAccent } from './Pad';
+import { GlowPad } from './GlowPad';
 import { Fader, type FaderAccent } from './Fader';
 import type { PadAssignment } from '../types';
+import type { GlowSection } from '../audio/glowEngine';
 import './Section.css';
 
 interface SectionProps {
@@ -9,6 +11,7 @@ interface SectionProps {
   title: string;
   subtitle: string;
   accent: FaderAccent;
+  glowSection: GlowSection;
   pads: PadAssignment[];
   activePadIds: Set<string>;
   showProgress?: boolean;
@@ -32,6 +35,7 @@ export function Section({
   title,
   subtitle,
   accent,
+  glowSection,
   pads,
   activePadIds,
   showProgress,
@@ -73,8 +77,11 @@ export function Section({
         <div className="section__left">
           <div className="section__grid">
             {pads.map((pad) => (
-              <Pad
+              <GlowPad
                 key={pad.id}
+                glowId={pad.id}
+                glowSection={glowSection}
+                glowMode={pad.mode}
                 size={98}
                 accent={(pad.gradient as PadAccent) || accent}
                 label={pad.label}

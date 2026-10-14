@@ -126,6 +126,10 @@ export class AmbientVoice {
     this.nodes = { oscillators, filter, lfo, lfoGain, envelope, dryGain, wetSendGain };
   }
 
+  get releaseSec(): number {
+    return this.pack.release;
+  }
+
   attack(durationSec = this.pack.attack): void {
     const now = this.ctx.currentTime;
     const g = this.nodes.envelope.gain;

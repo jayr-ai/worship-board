@@ -40,6 +40,11 @@ export class BackgroundEngine {
   private activeDeckIndex = 0;
   private currentPadId: string | null = null;
   private looping = false;
+  /** Which pad each deck is currently loaded with, and that pad's target
+   * (trim-adjusted) peak gain - lets the glow loop read a 0..1 level for
+   * both decks during a crossfade handoff (5.3). */
+  private deckPadId: [string | null, string | null] = [null, null];
+  private deckTargetGain: [number, number] = [1, 1];
 
   constructor(ctx: AudioContext, destination: AudioNode) {
     this.ctx = ctx;
@@ -74,6 +79,18 @@ export class BackgroundEngine {
     return this.currentPadId;
   }
 
+  /** 0..1 level for a given pad, normalized against its own target gain, so
+   * the glow loop sees both decks during a crossfade handoff. */
+  getPadLevel(padId: string): number {
+    for (let i = 0; i < 2; i++) {
+      if (this.deckPadId[i] === padId) {
+        const target = this.deckTargetGain[i] || 1;
+        return Math.min(1, this.decks[i].gain.gain.value / target);
+      }
+    }
+    return 0;
+  }
+
   /** Tap a Background pad: starts it, crossfades from whatever's playing, or
    * stops it if it's the pad already sounding. */
   async playPad(
@@ -98,8 +115,15 @@ export class BackgroundEngine {
     nextDeck.audio.currentTime = 0;
     this.looping = loop;
     usePlaybackStore.getState().setBgLooping(loop);
+    // Cancel first: a rapid re-trigger can land on a deck that still has a
+    // setValueCurveAtTime automation in flight from its last crossfade, and
+    // setValueAtTime on top of that throws NotSupportedError.
+    nextDeck.gain.gain.cancelScheduledValues(this.ctx.currentTime);
     nextDeck.gain.gain.setValueAtTime(0, this.ctx.currentTime);
     await nextDeck.audio.play();
+
+    this.deckPadId[nextIndex] = pad.id;
+    this.deckTargetGain[nextIndex] = targetGain;
 
     if (hadPrevious) {
       equalPowerCrossfade(previousDeck.gain, nextDeck.gain, this.ctx, crossfadeSec, targetGain);

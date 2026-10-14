@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import './Pad.css';
 
 export type PadAccent = 'gold' | 'coral' | 'sky' | 'mint' | 'violet' | 'rose';
@@ -17,22 +18,26 @@ interface PadProps {
   onPointerUp?: () => void;
 }
 
-export function Pad({
-  size,
-  accent,
-  label,
-  tag,
-  duration,
-  active = false,
-  showProgress = false,
-  editing = false,
-  onPointerDown,
-  onPointerUp,
-}: PadProps) {
+export const Pad = forwardRef<HTMLButtonElement, PadProps>(function Pad(
+  {
+    size,
+    accent,
+    label,
+    tag,
+    duration,
+    active = false,
+    showProgress = false,
+    editing = false,
+    onPointerDown,
+    onPointerUp,
+  },
+  ref,
+) {
   const isEmpty = !label;
 
   return (
     <button
+      ref={ref}
       type="button"
       className={`pad pad--${accent} ${isEmpty ? 'pad--empty' : 'pad--assigned'} ${
         active ? 'pad--active' : ''
@@ -60,4 +65,4 @@ export function Pad({
       )}
     </button>
   );
-}
+});

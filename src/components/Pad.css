@@ -56,12 +56,21 @@
 }
 
 .pad--assigned {
+  --glow: 0;
   background: linear-gradient(145deg, var(--a), var(--b));
   border: 2px solid rgba(255, 255, 255, 0.22);
   color: #0b1530;
 }
 
-.pad--assigned.pad--active {
+/* The active look is a separate overlay layer whose opacity is driven by
+   --glow (set from JS via refs in a rAF loop, never React state - see
+   src/audio/glowEngine.ts). This lets the glow pulse and fade in sync with
+   the real gain envelope without ever animating box-shadow directly. */
+.pad--assigned::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: linear-gradient(145deg, #ffffff 0%, var(--hi) 45%, var(--a) 100%);
   border: 2px solid #ffffff;
   box-shadow:
@@ -69,10 +78,14 @@
     0 0 16px 5px var(--a),
     0 0 40px 14px rgba(var(--rgb), 0.7),
     inset 0 0 20px rgba(255, 255, 255, 0.6);
-  z-index: 2;
+  opacity: var(--glow);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .pad__empty-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -91,6 +104,8 @@
 }
 
 .pad__title {
+  position: relative;
+  z-index: 1;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.1;
@@ -99,6 +114,8 @@
 }
 
 .pad__footer {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -126,6 +143,7 @@
   height: 4px;
   width: 40%;
   background: #0b1530;
+  z-index: 1;
 }
 
 .pad__edit-badge {
