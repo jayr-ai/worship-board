@@ -11,6 +11,7 @@ interface TopBarProps {
   onStopAll: () => void;
   onMasterChange: (value: number) => void;
   onOpenSets: () => void;
+  onOpenLibrary: () => void;
 }
 
 export function TopBar({
@@ -24,6 +25,7 @@ export function TopBar({
   onStopAll,
   onMasterChange,
   onOpenSets,
+  onOpenLibrary,
 }: TopBarProps) {
   return (
     <div className={`topbar ${locked ? 'topbar--locked' : ''}`}>
@@ -31,6 +33,9 @@ export function TopBar({
         <h1 className="topbar__title">WORSHIP BOARD</h1>
         <button type="button" className="topbar__set" onClick={onOpenSets}>
           {setName} ▾
+        </button>
+        <button type="button" className="topbar__set" onClick={onOpenLibrary}>
+          Library
         </button>
       </div>
 

@@ -1,6 +1,8 @@
 import './Pad.css';
 
-export type PadAccent = 'gold' | 'coral' | 'sky' | 'mint';
+export type PadAccent = 'gold' | 'coral' | 'sky' | 'mint' | 'violet' | 'rose';
+
+export const PAD_ACCENTS: PadAccent[] = ['gold', 'coral', 'sky', 'mint', 'violet', 'rose'];
 
 interface PadProps {
   size: number;
@@ -10,6 +12,7 @@ interface PadProps {
   duration?: string;
   active?: boolean;
   showProgress?: boolean;
+  editing?: boolean;
   onPointerDown?: () => void;
   onPointerUp?: () => void;
 }
@@ -22,6 +25,7 @@ export function Pad({
   duration,
   active = false,
   showProgress = false,
+  editing = false,
   onPointerDown,
   onPointerUp,
 }: PadProps) {
@@ -38,6 +42,7 @@ export function Pad({
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerUp}
     >
+      {editing && <span className="pad__edit-badge">✎</span>}
       {isEmpty ? (
         <span className="pad__empty-content">
           <span className="pad__plus">+</span>

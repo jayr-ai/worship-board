@@ -92,6 +92,12 @@
   letter-spacing: 0.05em;
 }
 
+.section__edit--active {
+  background: var(--gold-a);
+  color: #0b1530;
+  border-color: var(--gold-a);
+}
+
 .section__body {
   flex: 1;
   display: flex;

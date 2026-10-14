@@ -1,13 +1,16 @@
 import type { PadAssignment, SectionId, TriggerMode } from '../types';
 import { useUIStore } from '../store/useUIStore';
 import { usePlaybackStore } from '../store/usePlaybackStore';
-import { faderValueToGain } from './taper';
+import { faderValueToGain, dbToGain } from './taper';
 import { rampParam } from './ramp';
 import { createReverbImpulse } from './reverbImpulse';
-import { getDemoSfxBuffer } from './sfxBuffers';
+import { getSfxAudioBuffer } from './sfxBuffers';
 import { AmbientVoice, type AmbientPack } from './ambientSynth';
 import { WakeLockManager } from './wakeLock';
 import { createSilentAudioElement } from './silentAudio';
+import { BackgroundEngine } from './BackgroundEngine';
+import { useLibraryStore } from '../store/useLibraryStore';
+import { useAssignmentsStore } from '../store/useAssignmentsStore';
 
 const FADE_ALL_SEC = 3;
 const STOP_ALL_MS = 80;
@@ -42,6 +45,8 @@ class AudioEngine {
   private silentAudio: HTMLAudioElement | null = null;
   private wakeLock = new WakeLockManager();
   private globalUnlockBound = false;
+  private background: BackgroundEngine | null = null;
+  private bgObjectUrls = new Map<string, string>();
 
   bindGlobalUnlock(): void {
     if (this.globalUnlockBound) return;
@@ -124,6 +129,8 @@ class AudioEngine {
     this.reverbConvolver = ctx.createConvolver();
     this.reverbConvolver.buffer = createReverbImpulse(ctx);
     this.reverbConvolver.connect(this.buses.ambient.input);
+
+    this.background = new BackgroundEngine(ctx, this.buses.bg.input);
   }
 
   private createBus(ctx: AudioContext, withDuck: boolean): Bus {
@@ -189,7 +196,7 @@ class AudioEngine {
       this.stopSfxVoice(pad.id, 0.005);
     }
 
-    const buffer = await getDemoSfxBuffer(pad.libraryId, ctx.sampleRate);
+    const buffer = await getSfxAudioBuffer(ctx, pad.libraryId);
     if (!buffer) return;
 
     const source = ctx.createBufferSource();
@@ -197,7 +204,7 @@ class AudioEngine {
     source.loop = mode !== 'oneshot';
 
     const envelope = ctx.createGain();
-    envelope.gain.value = 1;
+    envelope.gain.value = dbToGain(pad.trimDb ?? 0);
     source.connect(envelope).connect(this.buses.sfx.input);
     source.start();
 
@@ -278,6 +285,49 @@ class AudioEngine {
     this.ambientPack = pack;
   }
 
+  // ---- Background (section 3) --------------------------------------------
+
+  private blobUrlForPad(pad: PadAssignment): string | null {
+    if (!pad.libraryId) return null;
+    const cached = this.bgObjectUrls.get(pad.libraryId);
+    if (cached) return cached;
+    const item = useLibraryStore.getState().items.find((i) => i.id === pad.libraryId);
+    if (!item) return null;
+    const url = URL.createObjectURL(item.blob);
+    this.bgObjectUrls.set(pad.libraryId, url);
+    return url;
+  }
+
+  async triggerBackgroundPad(pad: PadAssignment, crossfadeSec?: number): Promise<void> {
+    if (!pad.libraryId) return;
+    await this.ensureStarted();
+    const url = this.blobUrlForPad(pad);
+    if (!url) return;
+    await this.background!.playPad(pad, url, dbToGain(pad.trimDb ?? 0), crossfadeSec);
+  }
+
+  toggleBackgroundPlayPause(): void {
+    this.background?.togglePlayPause();
+  }
+
+  toggleBackgroundLoop(): void {
+    this.background?.toggleLoop();
+    const padId = this.background?.playingPadId;
+    if (padId) {
+      const looping = usePlaybackStore.getState().bgLooping;
+      void useAssignmentsStore.getState().updatePad(padId, { tag: looping ? 'LOOP' : 'ONCE' });
+    }
+  }
+
+  async nextBackgroundPad(pads: PadAssignment[]): Promise<void> {
+    const assigned = pads.filter((p) => p.libraryId);
+    if (assigned.length === 0) return;
+    const currentId = this.background?.playingPadId ?? null;
+    const currentIndex = assigned.findIndex((p) => p.id === currentId);
+    const next = assigned[(currentIndex + 1) % assigned.length];
+    await this.triggerBackgroundPad(next);
+  }
+
   // ---- Global transport ---------------------------------------------------
 
   async stopAll(): Promise<void> {
@@ -309,6 +359,7 @@ class AudioEngine {
       this.currentAmbientVoice = null;
       usePlaybackStore.getState().setAmbientKey(null);
     }
+    this.background?.hardStop();
   }
 }
 

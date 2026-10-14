@@ -30,6 +30,16 @@
   --mint-b: #35a98a;
   --mint-rgb: 127, 221, 187;
 
+  --violet-hi: #d9c9ff;
+  --violet-a: #a47eff;
+  --violet-b: #6b3fd1;
+  --violet-rgb: 164, 126, 255;
+
+  --rose-hi: #ffd0e0;
+  --rose-a: #ff7fae;
+  --rose-b: #d63f78;
+  --rose-rgb: 255, 127, 174;
+
   --stage-w: 1180px;
   --stage-h: 820px;
 }

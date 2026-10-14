@@ -1,5 +1,6 @@
 // Procedurally synthesized demo SFX (section 9: no bundled audio files).
 // Each generator returns a mono AudioBuffer rendered once and cached.
+import { useLibraryStore } from '../store/useLibraryStore';
 
 function noiseBuffer(ctx: AudioContext | OfflineAudioContext, durationSec: number): AudioBuffer {
   const length = Math.floor(ctx.sampleRate * durationSec);
@@ -154,7 +155,7 @@ const GENERATORS: Record<string, (sampleRate: number) => Promise<AudioBuffer>> =
 
 const cache = new Map<string, AudioBuffer>();
 
-export async function getDemoSfxBuffer(
+async function getDemoSfxBuffer(
   libraryId: string,
   sampleRate: number,
 ): Promise<AudioBuffer | null> {
@@ -167,4 +168,32 @@ export async function getDemoSfxBuffer(
   const buffer = await generator(sampleRate);
   cache.set(libraryId, buffer);
   return buffer;
+}
+
+/**
+ * Resolves the playable buffer for a Sound Effects pad: one of the
+ * synthesized section-9 demo sounds, or a decoded imported library file.
+ * Decoded imports are cached by libraryId so retriggering is instant.
+ */
+export async function getSfxAudioBuffer(
+  ctx: AudioContext,
+  libraryId: string,
+): Promise<AudioBuffer | null> {
+  const demo = await getDemoSfxBuffer(libraryId, ctx.sampleRate);
+  if (demo) return demo;
+
+  const cached = cache.get(libraryId);
+  if (cached) return cached;
+
+  const item = useLibraryStore.getState().items.find((i) => i.id === libraryId);
+  if (!item) return null;
+
+  const arrayBuffer = await item.blob.arrayBuffer();
+  try {
+    const decoded = await ctx.decodeAudioData(arrayBuffer);
+    cache.set(libraryId, decoded);
+    return decoded;
+  } catch {
+    return null;
+  }
 }

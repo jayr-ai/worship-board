@@ -1,0 +1,117 @@
+.pad-edit__current {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.pad-edit__current--empty {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.pad-edit__current-duration {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.pad-edit__import-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--gold-a);
+  color: #0b1530;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.pad-edit__hidden-input {
+  display: none;
+}
+
+.pad-edit__library-label {
+  margin-top: 12px;
+}
+
+.pad-edit__library-list {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pad-edit__library-item {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.pad-edit__library-item--active {
+  border-color: var(--gold-a);
+  color: var(--gold-a);
+}
+
+.pad-edit__library-item-duration {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pad-edit__swatches {
+  display: flex;
+  gap: 10px;
+}
+
+.pad-edit__swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.pad-edit__swatch--selected {
+  border-color: var(--text-primary);
+}
+
+.pad-edit__swatch--gold {
+  background: linear-gradient(145deg, var(--gold-a), var(--gold-b));
+}
+.pad-edit__swatch--coral {
+  background: linear-gradient(145deg, var(--coral-a), var(--coral-b));
+}
+.pad-edit__swatch--sky {
+  background: linear-gradient(145deg, var(--sky-a), var(--sky-b));
+}
+.pad-edit__swatch--mint {
+  background: linear-gradient(145deg, var(--mint-a), var(--mint-b));
+}
+.pad-edit__swatch--violet {
+  background: linear-gradient(145deg, var(--violet-a), var(--violet-b));
+}
+.pad-edit__swatch--rose {
+  background: linear-gradient(145deg, var(--rose-a), var(--rose-b));
+}
+
+.pad-edit__trim-slider {
+  width: 100%;
+  accent-color: var(--gold-a);
+}

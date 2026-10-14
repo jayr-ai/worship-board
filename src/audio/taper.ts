@@ -6,3 +6,8 @@ export function faderValueToGain(value: number): number {
   const clamped = Math.min(1, Math.max(0, value));
   return clamped === 0 ? 0 : clamped ** FADER_TAPER_EXPONENT;
 }
+
+/** Per-pad volume trim (dB) from the pad edit sheet. */
+export function dbToGain(db: number): number {
+  return 10 ** (db / 20);
+}

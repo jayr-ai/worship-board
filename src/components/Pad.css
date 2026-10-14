@@ -35,6 +35,18 @@
   --b: var(--mint-b);
   --rgb: var(--mint-rgb);
 }
+.pad--violet {
+  --hi: var(--violet-hi);
+  --a: var(--violet-a);
+  --b: var(--violet-b);
+  --rgb: var(--violet-rgb);
+}
+.pad--rose {
+  --hi: var(--rose-hi);
+  --a: var(--rose-a);
+  --b: var(--rose-b);
+  --rgb: var(--rose-rgb);
+}
 
 .pad--empty {
   background: linear-gradient(145deg, rgba(var(--rgb), 0.16), rgba(var(--rgb), 0.04));
@@ -114,4 +126,20 @@
   height: 4px;
   width: 40%;
   background: #0b1530;
+}
+
+.pad__edit-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: #0b1530;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
 }

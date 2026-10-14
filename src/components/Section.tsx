@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pad, type PadAccent } from './Pad';
-import { Fader } from './Fader';
+import { Fader, type FaderAccent } from './Fader';
 import type { PadAssignment } from '../types';
 import './Section.css';
 
@@ -8,7 +8,7 @@ interface SectionProps {
   number: number;
   title: string;
   subtitle: string;
-  accent: PadAccent;
+  accent: FaderAccent;
   pads: PadAssignment[];
   activePadIds: Set<string>;
   showProgress?: boolean;
@@ -21,6 +21,10 @@ interface SectionProps {
   onPadPointerUp?: (padId: string) => void;
   onFaderChange: (value: number) => void;
   onFaderMuteToggle: () => void;
+  editMode?: boolean;
+  onToggleEdit?: () => void;
+  onPadEdit?: (padId: string) => void;
+  formatDuration?: (durationSec: number) => string;
 }
 
 export function Section({
@@ -40,6 +44,10 @@ export function Section({
   onPadPointerUp,
   onFaderChange,
   onFaderMuteToggle,
+  editMode = false,
+  onToggleEdit,
+  onPadEdit,
+  formatDuration,
 }: SectionProps) {
   return (
     <section
@@ -52,7 +60,11 @@ export function Section({
           <h2 className={`section__title section__title--${accent}`}>{title}</h2>
           <p className="section__subtitle">{subtitle}</p>
         </div>
-        <button type="button" className="section__edit">
+        <button
+          type="button"
+          className={`section__edit ${editMode ? 'section__edit--active' : ''}`}
+          onClick={onToggleEdit}
+        >
           EDIT
         </button>
       </header>
@@ -64,14 +76,25 @@ export function Section({
               <Pad
                 key={pad.id}
                 size={98}
-                accent={accent}
+                accent={(pad.gradient as PadAccent) || accent}
                 label={pad.label}
                 tag={pad.tag}
-                duration={pad.durationSec ? `${pad.durationSec.toFixed(1)}s` : undefined}
+                duration={
+                  pad.durationSec
+                    ? formatDuration
+                      ? formatDuration(pad.durationSec)
+                      : `${pad.durationSec.toFixed(1)}s`
+                    : undefined
+                }
                 active={activePadIds.has(pad.id)}
                 showProgress={showProgress}
-                onPointerDown={() => onPadPointerDown(pad.id)}
-                onPointerUp={onPadPointerUp ? () => onPadPointerUp(pad.id) : undefined}
+                editing={editMode}
+                onPointerDown={() =>
+                  editMode ? onPadEdit?.(pad.id) : onPadPointerDown(pad.id)
+                }
+                onPointerUp={
+                  !editMode && onPadPointerUp ? () => onPadPointerUp(pad.id) : undefined
+                }
               />
             ))}
           </div>

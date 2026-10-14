@@ -7,21 +7,28 @@ import { SegmentedControl } from './components/SegmentedControl';
 import { Chip } from './components/Chip';
 import { TransportRow } from './components/TransportRow';
 import { AudioNotices } from './components/AudioNotices';
+import { PadEditSheet } from './components/sheets/PadEditSheet';
+import { LibrarySheet } from './components/sheets/LibrarySheet';
 import { useUIStore } from './store/useUIStore';
 import { usePlaybackStore } from './store/usePlaybackStore';
+import { useAssignmentsStore } from './store/useAssignmentsStore';
+import { useLibraryStore } from './store/useLibraryStore';
 import { audioEngine } from './audio/AudioEngine';
-import {
-  clipsBankA,
-  clipsBankB,
-  sfxBankA,
-  sfxBankB,
-  bgPads,
-  ambientKeys,
-} from './data/placeholderData';
+import { formatDuration } from './utils/formatDuration';
+import { clipsBankA, clipsBankB, ambientKeys } from './data/placeholderData';
 import './App.css';
 
 const DEFAULTS = { clips: 0.8, sfx: 1, bg: 0.25, ambient: 0.4 };
 const EMPTY_SET: Set<string> = new Set();
+
+type EditingSection = 'sfx' | 'bg' | null;
+
+const MODE_TAG: Record<string, string> = {
+  oneshot: 'ONE-SHOT',
+  hold: 'HOLD',
+  loop: 'LOOP',
+  toggle: 'TOGGLE',
+};
 
 function App() {
   const {
@@ -45,37 +52,58 @@ function App() {
 
   const activeSfxPadIds = usePlaybackStore((s) => s.activeSfxPadIds);
   const activeAmbientKey = usePlaybackStore((s) => s.activeAmbientKey);
+  const bgPadId = usePlaybackStore((s) => s.bgPadId);
+  const bgPlaying = usePlaybackStore((s) => s.bgPlaying);
+  const bgLooping = usePlaybackStore((s) => s.bgLooping);
 
-  const [bgPlaying, setBgPlaying] = useState(false);
-  const [bgLooping, setBgLooping] = useState(false);
+  const { sfxBankA, sfxBankB, bgPads, updatePad, clearPad } = useAssignmentsStore();
+  const library = useLibraryStore();
+
+  const [editingSection, setEditingSection] = useState<EditingSection>(null);
+  const [editingPadId, setEditingPadId] = useState<string | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   useEffect(() => {
     audioEngine.bindGlobalUnlock();
+    void useAssignmentsStore.getState().load();
+    void useLibraryStore.getState().load();
+    navigator.storage?.persist?.().catch(() => {});
   }, []);
 
   const clipsPads = banks.clips === 'bankA' ? clipsBankA : clipsBankB;
   const sfxPads = banks.sfx === 'bankA' ? sfxBankA : sfxBankB;
+  const sfxPadsForDisplay = sfxPads.map((pad) => ({
+    ...pad,
+    tag: pad.libraryId ? MODE_TAG[pad.mode ?? 'oneshot'] : pad.tag,
+  }));
+  const bgPadsForDisplay = bgPads.map((pad) => ({
+    ...pad,
+    tag: pad.libraryId ? pad.tag ?? 'ONCE' : pad.tag,
+  }));
 
-  // Song Clips and Background have no real audio yet (Phase 3/4 import), so
-  // tapping a pad there just toggles a fake "sounding" visual state.
-  const demoTogglePad = (section: 'clips' | 'bg', padId: string) => {
-    setDemoActivePad(section, demoActivePad[section] === padId ? null : padId);
-  };
+  const editingPad = editingPadId
+    ? [...sfxBankA, ...sfxBankB, ...bgPads].find((p) => p.id === editingPadId)
+    : null;
+  const editingIsBackground = editingPadId?.startsWith('bg-') ?? false;
 
-  const clearDemoAndTransport = () => {
-    setDemoActivePad('clips', null);
-    setDemoActivePad('bg', null);
-    setBgPlaying(false);
+  // Song Clips has no real audio yet (Phase 4: clip editor), so tapping a
+  // pad there just toggles a fake "sounding" visual state.
+  const demoTogglePad = (padId: string) => {
+    setDemoActivePad('clips', demoActivePad.clips === padId ? null : padId);
   };
 
   const handleStopAll = () => {
-    clearDemoAndTransport();
+    setDemoActivePad('clips', null);
     void audioEngine.stopAll();
   };
 
   const handleFadeAll = () => {
-    clearDemoAndTransport();
+    setDemoActivePad('clips', null);
     void audioEngine.fadeAll();
+  };
+
+  const closePadEdit = () => {
+    setEditingPadId(null);
   };
 
   return (
@@ -92,6 +120,7 @@ function App() {
         onStopAll={handleStopAll}
         onMasterChange={(v) => setLevel('master', v)}
         onOpenSets={() => {}}
+        onOpenLibrary={() => setLibraryOpen(true)}
       />
 
       <div className="board-row">
@@ -107,7 +136,7 @@ function App() {
           faderValue={levels.clips}
           faderDefault={DEFAULTS.clips}
           faderMuted={muted.clips}
-          onPadPointerDown={(id) => demoTogglePad('clips', id)}
+          onPadPointerDown={demoTogglePad}
           onFaderChange={(v) => setLevel('clips', v)}
           onFaderMuteToggle={() => toggleMute('clips')}
           footer={
@@ -130,12 +159,16 @@ function App() {
           title="Sound Effects"
           subtitle="Claps, shouts, stings"
           accent="coral"
-          pads={sfxPads}
+          pads={sfxPadsForDisplay}
           activePadIds={activeSfxPadIds}
           width={280}
           faderValue={levels.sfx}
           faderDefault={DEFAULTS.sfx}
           faderMuted={muted.sfx}
+          editMode={editingSection === 'sfx'}
+          onToggleEdit={() => setEditingSection(editingSection === 'sfx' ? null : 'sfx')}
+          onPadEdit={(id) => setEditingPadId(id)}
+          formatDuration={formatDuration}
           onPadPointerDown={(id) => {
             const pad = sfxPads.find((p) => p.id === id);
             if (pad) void audioEngine.triggerSfxDown(pad);
@@ -163,16 +196,20 @@ function App() {
           title="Background"
           subtitle="Full songs"
           accent="sky"
-          pads={bgPads}
-          activePadIds={demoActivePad.bg ? new Set([demoActivePad.bg]) : EMPTY_SET}
+          pads={bgPadsForDisplay}
+          activePadIds={bgPadId ? new Set([bgPadId]) : EMPTY_SET}
           showProgress
           width={280}
           faderValue={levels.bg}
           faderDefault={DEFAULTS.bg}
           faderMuted={muted.bg}
+          editMode={editingSection === 'bg'}
+          onToggleEdit={() => setEditingSection(editingSection === 'bg' ? null : 'bg')}
+          onPadEdit={(id) => setEditingPadId(id)}
+          formatDuration={formatDuration}
           onPadPointerDown={(id) => {
-            demoTogglePad('bg', id);
-            setBgPlaying(demoActivePad.bg !== id);
+            const pad = bgPads.find((p) => p.id === id);
+            if (pad?.libraryId) void audioEngine.triggerBackgroundPad(pad);
           }}
           onFaderChange={(v) => setLevel('bg', v)}
           onFaderMuteToggle={() => toggleMute('bg')}
@@ -181,9 +218,9 @@ function App() {
               <TransportRow
                 playing={bgPlaying}
                 looping={bgLooping}
-                onPlayPause={() => setBgPlaying((p) => !p)}
-                onNext={() => {}}
-                onToggleLoop={() => setBgLooping((l) => !l)}
+                onPlayPause={() => audioEngine.toggleBackgroundPlayPause()}
+                onNext={() => void audioEngine.nextBackgroundPad(bgPads)}
+                onToggleLoop={() => audioEngine.toggleBackgroundLoop()}
               />
               <Chip label="CROSSFADE" value="4 sec" />
             </>
@@ -210,6 +247,55 @@ function App() {
           onFadeOut={() => audioEngine.fadeOutAmbient()}
         />
       </div>
+
+      {editingPad && (
+        <PadEditSheet
+          pad={editingPad}
+          sectionLabel={editingIsBackground ? 'Background' : 'Sound Effects'}
+          showModeSelector={!editingIsBackground}
+          library={library.items}
+          onClose={closePadEdit}
+          onChooseLibraryItem={(item) =>
+            void updatePad(editingPad.id, {
+              libraryId: item.id,
+              label: item.label,
+              durationSec: item.durationSec,
+            })
+          }
+          onImportNew={(file) => {
+            void (async () => {
+              const [item] = await useLibraryStore.getState().importFiles([file]);
+              if (item) {
+                await updatePad(editingPad.id, {
+                  libraryId: item.id,
+                  label: item.label,
+                  durationSec: item.durationSec,
+                });
+              }
+            })();
+          }}
+          onLabelChange={(label) => void updatePad(editingPad.id, { label })}
+          onGradientChange={(gradient) => void updatePad(editingPad.id, { gradient })}
+          onModeChange={(mode) => void updatePad(editingPad.id, { mode })}
+          onTrimChange={(trimDb) => void updatePad(editingPad.id, { trimDb })}
+          onClear={() => {
+            void clearPad(editingPad.id);
+            closePadEdit();
+          }}
+        />
+      )}
+
+      {libraryOpen && (
+        <LibrarySheet
+          items={library.items}
+          importErrors={library.importErrors}
+          onClose={() => setLibraryOpen(false)}
+          onImport={(files) => void library.importFiles(files)}
+          onRename={(id, label) => void library.renameItem(id, label)}
+          onDelete={(id) => void library.deleteItem(id)}
+          onDismissErrors={library.dismissImportErrors}
+        />
+      )}
     </Stage>
   );
 }
