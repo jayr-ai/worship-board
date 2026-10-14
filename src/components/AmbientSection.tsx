@@ -19,6 +19,12 @@ interface AmbientSectionProps {
   onFadeOut: () => void;
   locked?: boolean;
   faderDisabled?: boolean;
+  editMode?: boolean;
+  onToggleEdit?: () => void;
+  onKeyEdit?: (key: string) => void;
+  customKeyIds?: Set<string>;
+  activeKey?: string | null;
+  activeDetail?: string | null;
 }
 
 export function AmbientSection({
@@ -36,6 +42,12 @@ export function AmbientSection({
   onFadeOut,
   locked = false,
   faderDisabled = false,
+  editMode = false,
+  onToggleEdit,
+  onKeyEdit,
+  customKeyIds,
+  activeKey = null,
+  activeDetail = null,
 }: AmbientSectionProps) {
   return (
     <section className={`ambient ${faderMuted ? 'ambient--muted' : ''}`}>
@@ -45,6 +57,14 @@ export function AmbientSection({
           <h2 className="ambient__title">Ambient Pads</h2>
           <p className="ambient__subtitle">Sustained key drone</p>
         </div>
+        <button
+          type="button"
+          className={`section__edit ${editMode ? 'section__edit--active' : ''}`}
+          onClick={onToggleEdit}
+          disabled={locked}
+        >
+          EDIT
+        </button>
       </header>
 
       <div className="ambient__body">
@@ -59,9 +79,27 @@ export function AmbientSection({
             disabled={locked}
           />
 
+          <div className="ambient__now-playing">
+            {activeKey ? (
+              <>
+                <span className="ambient__now-playing-key">{activeKey}</span>
+                <span className="ambient__now-playing-detail">{activeDetail}</span>
+              </>
+            ) : (
+              <span className="ambient__now-playing-idle">— tap a key —</span>
+            )}
+          </div>
+
           <div className="ambient__grid">
             {keys.map((key) => (
-              <AmbientKey key={key} note={key} onPointerDown={() => onKeyPointerDown(key)} />
+              <AmbientKey
+                key={key}
+                note={key}
+                editing={editMode}
+                hasCustomAudio={customKeyIds?.has(key) ?? false}
+                onPointerDown={() => onKeyPointerDown(key)}
+                onEdit={() => onKeyEdit?.(key)}
+              />
             ))}
           </div>
 

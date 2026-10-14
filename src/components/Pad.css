@@ -7,7 +7,10 @@
   padding: 10px;
   border-radius: 12px;
   border: none;
-  overflow: hidden;
+  /* No overflow:hidden here on purpose - the active glow's box-shadow (see
+     ::after below) is meant to bleed out over neighboring pads per the
+     spec ("z-index: 2 so the glow sits above neighboring pads"). Clipping
+     it to the pad's own box was quietly muting the effect. */
   font-family: 'Barlow', sans-serif;
 }
 

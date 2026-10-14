@@ -78,6 +78,8 @@ describe('v1 -> v2 set migration', () => {
     expect(migrated.clipsBankA).toHaveLength(10);
     expect(migrated.clipsBankB).toHaveLength(10);
     expect(migrated.bgPads).toHaveLength(10);
+    expect(migrated.ambientPads).toHaveLength(12);
+    expect(migrated.ambientPads.every((p) => p.libraryId === null)).toBe(true);
 
     const untouchedPad = migrated.sfxBankA.find((p) => p.id === 'sfx-a-1');
     expect(untouchedPad).toEqual({ id: 'sfx-a-1', libraryId: null });

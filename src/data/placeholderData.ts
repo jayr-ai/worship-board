@@ -27,27 +27,6 @@ export const clipsBankA: PadAssignment[] = createEmptyBank('clips-a');
 export const clipsBankB: PadAssignment[] = createEmptyBank('clips-b');
 export const bgPads: PadAssignment[] = createEmptyBank('bg', 10);
 
-export function createDefaultSetData(id: string, name: string): SetData {
-  const now = Date.now();
-  return {
-    id,
-    name,
-    levels: { clips: 0.8, sfx: 1, bg: 0.25, ambient: 0.4, master: 1 },
-    muted: { clips: false, sfx: false, bg: false, ambient: false },
-    clipsBankA: createEmptyBank('clips-a'),
-    clipsBankB: createEmptyBank('clips-b'),
-    sfxBankA: sfxBankA.map((pad) => ({ ...pad })),
-    sfxBankB: createEmptyBank('sfx-b'),
-    bgPads: createEmptyBank('bg', 10),
-    ambientQuality: 'major',
-    ambientPack: 'warm',
-    exclusiveClips: true,
-    defaultClipFadeOutSec: 3,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
 export const ambientKeys = [
   'C',
   'C#',
@@ -62,3 +41,30 @@ export const ambientKeys = [
   'A#',
   'B',
 ];
+
+/** One optional custom-audio slot per key (section 4.4's "custom pad
+ * pack"); empty by default, meaning "use the built-in synth". */
+export const createEmptyAmbientPads = (): PadAssignment[] =>
+  ambientKeys.map((key) => emptyPad(key));
+
+export function createDefaultSetData(id: string, name: string): SetData {
+  const now = Date.now();
+  return {
+    id,
+    name,
+    levels: { clips: 0.8, sfx: 1, bg: 0.25, ambient: 0.4, master: 1 },
+    muted: { clips: false, sfx: false, bg: false, ambient: false },
+    clipsBankA: createEmptyBank('clips-a'),
+    clipsBankB: createEmptyBank('clips-b'),
+    sfxBankA: sfxBankA.map((pad) => ({ ...pad })),
+    sfxBankB: createEmptyBank('sfx-b'),
+    bgPads: createEmptyBank('bg', 10),
+    ambientPads: createEmptyAmbientPads(),
+    ambientQuality: 'major',
+    ambientPack: 'warm',
+    exclusiveClips: true,
+    defaultClipFadeOutSec: 3,
+    createdAt: now,
+    updatedAt: now,
+  };
+}

@@ -80,6 +80,10 @@ class GlowEngine {
       }
 
       entry.el.style.setProperty('--glow', value.toFixed(3));
+      // Lift a glowing pad above its neighbors so the halo isn't painted
+      // underneath whatever comes after it in the grid (5.1: "z-index: 2
+      // so the glow sits above neighboring pads").
+      entry.el.style.zIndex = value > 0.02 ? '2' : '';
     }
 
     requestAnimationFrame(this.tick);

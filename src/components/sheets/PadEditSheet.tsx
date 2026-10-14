@@ -11,6 +11,7 @@ interface PadEditSheetProps {
   pad: PadAssignment;
   sectionLabel: string;
   showModeSelector: boolean;
+  showColorPicker?: boolean;
   library: LibraryItem[];
   onClose: () => void;
   onChooseLibraryItem: (item: LibraryItem) => void;
@@ -20,6 +21,7 @@ interface PadEditSheetProps {
   onModeChange: (mode: TriggerMode) => void;
   onTrimChange: (trimDb: number) => void;
   onClear: () => void;
+  clearLabel?: string;
 }
 
 const MODE_OPTIONS: { value: TriggerMode; label: string }[] = [
@@ -33,6 +35,7 @@ export function PadEditSheet({
   pad,
   sectionLabel,
   showModeSelector,
+  showColorPicker = true,
   library,
   onClose,
   onChooseLibraryItem,
@@ -42,6 +45,7 @@ export function PadEditSheet({
   onModeChange,
   onTrimChange,
   onClear,
+  clearLabel = 'Clear Pad',
 }: PadEditSheetProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,22 +129,24 @@ export function PadEditSheet({
             />
           </div>
 
-          <div>
-            <span className="sheet-field-label">Color</span>
-            <div className="pad-edit__swatches">
-              {PAD_ACCENTS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`pad-edit__swatch pad-edit__swatch--${color} ${
-                    (pad.gradient ?? '') === color ? 'pad-edit__swatch--selected' : ''
-                  }`}
-                  onClick={() => onGradientChange(color)}
-                  aria-label={color}
-                />
-              ))}
+          {showColorPicker && (
+            <div>
+              <span className="sheet-field-label">Color</span>
+              <div className="pad-edit__swatches">
+                {PAD_ACCENTS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`pad-edit__swatch pad-edit__swatch--${color} ${
+                      (pad.gradient ?? '') === color ? 'pad-edit__swatch--selected' : ''
+                    }`}
+                    onClick={() => onGradientChange(color)}
+                    aria-label={color}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {showModeSelector && (
             <div>
@@ -169,7 +175,7 @@ export function PadEditSheet({
 
         <div className="sheet-footer">
           <button type="button" className="sheet-btn sheet-btn--danger" onClick={onClear}>
-            Clear Pad
+            {clearLabel}
           </button>
           <button type="button" className="sheet-btn sheet-btn--primary" onClick={onClose}>
             Done

@@ -2,11 +2,11 @@ import { create } from 'zustand';
 import type { PadAssignment } from '../types';
 import type { SetData } from '../storage/db';
 import { deleteSet, getAllSets, getAppSetting, putAppSetting, putSet } from '../storage/db';
-import { createDefaultSetData } from '../data/placeholderData';
+import { ambientKeys, createDefaultSetData, createEmptyAmbientPads } from '../data/placeholderData';
 import { buildBackupZip, restoreBackupZip, shareOrDownloadZip } from '../storage/backup';
 import { useLibraryStore } from './useLibraryStore';
 
-type ArrayKey = 'clipsBankA' | 'clipsBankB' | 'sfxBankA' | 'sfxBankB' | 'bgPads';
+type ArrayKey = 'clipsBankA' | 'clipsBankB' | 'sfxBankA' | 'sfxBankB' | 'bgPads' | 'ambientPads';
 
 function arrayKeyForPadId(padId: string): ArrayKey | null {
   if (padId.startsWith('clips-a-')) return 'clipsBankA';
@@ -14,10 +14,18 @@ function arrayKeyForPadId(padId: string): ArrayKey | null {
   if (padId.startsWith('sfx-a-')) return 'sfxBankA';
   if (padId.startsWith('sfx-b-')) return 'sfxBankB';
   if (padId.startsWith('bg-')) return 'bgPads';
+  if ((ambientKeys as string[]).includes(padId)) return 'ambientPads';
   return null;
 }
 
 const emptyLike = (pad: PadAssignment): PadAssignment => ({ id: pad.id, libraryId: null });
+
+/** Sets saved before custom Ambient audio existed won't have `ambientPads`
+ * yet - fill it in rather than crashing on a missing field. */
+function normalizeSet(data: SetData): SetData {
+  if (data.ambientPads && data.ambientPads.length === ambientKeys.length) return data;
+  return { ...data, ambientPads: createEmptyAmbientPads() };
+}
 
 interface SetState {
   setsIndex: { id: string; name: string }[];
@@ -66,7 +74,7 @@ export const useSetStore = create<SetState>((set, get) => ({
     }
 
     const currentId = (await getAppSetting<string>('currentSetId')) ?? all[0].id;
-    const current = all.find((s) => s.id === currentId) ?? all[0];
+    const current = normalizeSet(all.find((s) => s.id === currentId) ?? all[0]);
 
     set({
       setsIndex: all.map((s) => ({ id: s.id, name: s.name })),
@@ -80,7 +88,7 @@ export const useSetStore = create<SetState>((set, get) => ({
     const target = all.find((s) => s.id === id);
     if (!target) return;
     await putAppSetting('currentSetId', id);
-    set({ current: target });
+    set({ current: normalizeSet(target) });
   },
 
   createNew: async (name) => {
@@ -98,7 +106,13 @@ export const useSetStore = create<SetState>((set, get) => ({
     const source = all.find((s) => s.id === id);
     if (!source) return;
     const now = Date.now();
-    const copy: SetData = { ...source, id: crypto.randomUUID(), name: newName, createdAt: now, updatedAt: now };
+    const copy: SetData = {
+      ...normalizeSet(source),
+      id: crypto.randomUUID(),
+      name: newName,
+      createdAt: now,
+      updatedAt: now,
+    };
     await putSet(copy);
     set((state) => ({ setsIndex: [...state.setsIndex, { id: copy.id, name: copy.name }] }));
   },
@@ -122,7 +136,7 @@ export const useSetStore = create<SetState>((set, get) => ({
     const remaining = state.setsIndex.filter((s) => s.id !== id);
     if (state.current.id === id) {
       const all = await getAllSets();
-      const next = all.find((s) => s.id === remaining[0].id)!;
+      const next = normalizeSet(all.find((s) => s.id === remaining[0].id)!);
       await putAppSetting('currentSetId', next.id);
       set({ setsIndex: remaining, current: next });
     } else {
@@ -217,7 +231,8 @@ export const useSetStore = create<SetState>((set, get) => ({
 
   importZip: async (file) => {
     const existingNames = new Set(get().setsIndex.map((s) => s.name));
-    const { importedSets } = await restoreBackupZip(file, existingNames);
+    const { importedSets: rawImportedSets } = await restoreBackupZip(file, existingNames);
+    const importedSets = rawImportedSets.map(normalizeSet);
     await useLibraryStore.getState().load();
     if (importedSets.length === 0) return { importedCount: 0 };
 

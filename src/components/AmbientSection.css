@@ -86,7 +86,8 @@
   color: color-mix(in srgb, var(--text-primary) calc((1 - var(--glow)) * 100%), #0b1530);
   font-size: 22px;
   font-weight: 700;
-  overflow: hidden;
+  /* No overflow:hidden - let the glow halo bleed outward (see Pad.css for
+     the same fix and reasoning). */
 }
 
 /* Same JS-driven overlay pattern as Pad.css (see glowEngine.ts). */
@@ -122,4 +123,64 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
+}
+
+.ambient__key-edit-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: #0b1530;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.ambient__key-custom-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mint-a);
+  z-index: 1;
+}
+
+.ambient__now-playing {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+}
+
+.ambient__now-playing-key {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--mint-a);
+  letter-spacing: 0.03em;
+}
+
+.ambient__now-playing-detail {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.ambient__now-playing-idle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
 }

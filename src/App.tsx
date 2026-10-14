@@ -50,6 +50,8 @@ function App() {
 
   const activeSfxPadIds = usePlaybackStore((s) => s.activeSfxPadIds);
   const activeClipPadIds = usePlaybackStore((s) => s.activeClipPadIds);
+  const activeAmbientKey = usePlaybackStore((s) => s.activeAmbientKey);
+  const activeAmbientDetail = usePlaybackStore((s) => s.activeAmbientDetail);
   const bgPadId = usePlaybackStore((s) => s.bgPadId);
   const bgPlaying = usePlaybackStore((s) => s.bgPlaying);
   const bgLooping = usePlaybackStore((s) => s.bgLooping);
@@ -66,13 +68,27 @@ function App() {
     toggleExclusiveClips,
     cycleDefaultClipFadeOut,
   } = useSetStore();
-  const { clipsBankA, clipsBankB, sfxBankA, sfxBankB, bgPads, levels, muted, ambientQuality, ambientPack, exclusiveClips, defaultClipFadeOutSec } =
-    current;
+  const {
+    clipsBankA,
+    clipsBankB,
+    sfxBankA,
+    sfxBankB,
+    bgPads,
+    ambientPads,
+    levels,
+    muted,
+    ambientQuality,
+    ambientPack,
+    exclusiveClips,
+    defaultClipFadeOutSec,
+  } = current;
 
   const library = useLibraryStore();
 
   const [editingSection, setEditingSection] = useState<EditingSection>(null);
   const [editingPadId, setEditingPadId] = useState<string | null>(null);
+  const [ambientEditMode, setAmbientEditMode] = useState(false);
+  const [editingAmbientKey, setEditingAmbientKey] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -95,6 +111,8 @@ function App() {
     if (willLock) {
       setEditingSection(null);
       setEditingPadId(null);
+      setAmbientEditMode(false);
+      setEditingAmbientKey(null);
       setLibraryOpen(false);
       setSetsOpen(false);
       setSettingsOpen(false);
@@ -119,7 +137,13 @@ function App() {
       )
     : null;
 
+  const customAmbientKeyIds = new Set(ambientPads.filter((p) => p.libraryId).map((p) => p.id));
+  const editingAmbientPad = editingAmbientKey
+    ? ambientPads.find((p) => p.id === editingAmbientKey)
+    : null;
+
   const closePadEdit = () => setEditingPadId(null);
+  const closeAmbientKeyEdit = () => setEditingAmbientKey(null);
 
   // Shared by the pad edit sheets' "Import New File" buttons: surfaces the
   // real decode error as a toast instead of just doing nothing.
@@ -300,6 +324,12 @@ function App() {
           faderMuted={muted.ambient}
           faderDisabled={locked && lockFadersToo}
           locked={locked}
+          editMode={ambientEditMode}
+          onToggleEdit={() => setAmbientEditMode((m) => !m)}
+          onKeyEdit={(key) => setEditingAmbientKey(key)}
+          customKeyIds={customAmbientKeyIds}
+          activeKey={activeAmbientKey}
+          activeDetail={activeAmbientDetail}
           onKeyPointerDown={(key) => void audioEngine.playAmbientKey(key)}
           onQualityChange={(q) => void setAmbientQuality(q)}
           onPackToggle={() => {
@@ -358,6 +388,45 @@ function App() {
           onClear={() => {
             void clearPad(editingPad.id);
             closePadEdit();
+          }}
+        />
+      )}
+
+      {editingAmbientPad && (
+        <PadEditSheet
+          pad={editingAmbientPad}
+          sectionLabel="Ambient"
+          showModeSelector={false}
+          showColorPicker={false}
+          clearLabel="Use Built-in Pad"
+          library={library.items}
+          onClose={closeAmbientKeyEdit}
+          onChooseLibraryItem={(item) =>
+            void updatePad(editingAmbientPad.id, {
+              libraryId: item.id,
+              label: item.label,
+              durationSec: item.durationSec,
+            })
+          }
+          onImportNew={(file) => {
+            void (async () => {
+              const item = await importFileForPad(file);
+              if (item) {
+                await updatePad(editingAmbientPad.id, {
+                  libraryId: item.id,
+                  label: item.label,
+                  durationSec: item.durationSec,
+                });
+              }
+            })();
+          }}
+          onLabelChange={(label) => void updatePad(editingAmbientPad.id, { label })}
+          onGradientChange={() => {}}
+          onModeChange={() => {}}
+          onTrimChange={(trimDb) => void updatePad(editingAmbientPad.id, { trimDb })}
+          onClear={() => {
+            void clearPad(editingAmbientPad.id);
+            closeAmbientKeyEdit();
           }}
         />
       )}

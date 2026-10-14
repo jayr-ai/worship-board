@@ -34,6 +34,9 @@ export interface SetData {
   sfxBankA: PadAssignment[];
   sfxBankB: PadAssignment[];
   bgPads: PadAssignment[];
+  /** Optional per-key custom audio override (section 4.4); empty libraryId
+   * means "use the built-in synth" for that key. */
+  ambientPads: PadAssignment[];
   ambientQuality: 'major' | 'minor';
   ambientPack: 'warm' | 'airy';
   exclusiveClips: boolean;
@@ -117,6 +120,9 @@ function getDB(): Promise<IDBPDatabase<WorshipBoardDB>> {
                 sfxBankA: bank('sfx-a', 10),
                 sfxBankB: bank('sfx-b', 10),
                 bgPads: bank('bg', 10),
+                ambientPads: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].map(
+                  (note) => ({ id: note, libraryId: null }),
+                ),
                 ambientQuality: 'major',
                 ambientPack: 'warm',
                 exclusiveClips: true,

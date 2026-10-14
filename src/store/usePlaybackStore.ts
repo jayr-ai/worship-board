@@ -6,6 +6,9 @@ interface PlaybackState {
   activeSfxPadIds: Set<string>;
   activeClipPadIds: Set<string>;
   activeAmbientKey: string | null;
+  /** What's actually sounding on that key, for the "Now Playing" readout:
+   * "MAJOR"/"MINOR" for the built-in synth, or the custom file's label. */
+  activeAmbientDetail: string | null;
   bgPadId: string | null;
   bgPlaying: boolean;
   bgLooping: boolean;
@@ -15,7 +18,7 @@ interface PlaybackState {
 
   setSfxActive: (padId: string, active: boolean) => void;
   setClipActive: (padId: string, active: boolean) => void;
-  setAmbientKey: (key: string | null) => void;
+  setAmbientKey: (key: string | null, detail?: string | null) => void;
   setBackground: (padId: string | null, playing: boolean) => void;
   setBgLooping: (looping: boolean) => void;
   setAudioUnlocked: (unlocked: boolean) => void;
@@ -27,6 +30,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   activeSfxPadIds: new Set(),
   activeClipPadIds: new Set(),
   activeAmbientKey: null,
+  activeAmbientDetail: null,
   bgPadId: null,
   bgPlaying: false,
   bgLooping: false,
@@ -48,7 +52,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       else next.delete(padId);
       return { activeClipPadIds: next };
     }),
-  setAmbientKey: (key) => set({ activeAmbientKey: key }),
+  setAmbientKey: (key, detail = null) => set({ activeAmbientKey: key, activeAmbientDetail: key ? detail : null }),
   setBackground: (padId, playing) => set({ bgPadId: padId, bgPlaying: playing }),
   setBgLooping: (looping) => set({ bgLooping: looping }),
   setAudioUnlocked: (unlocked) => set({ audioUnlocked: unlocked }),

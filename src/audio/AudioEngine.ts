@@ -5,7 +5,9 @@ import { faderValueToGain, dbToGain } from './taper';
 import { rampParam } from './ramp';
 import { createReverbImpulse } from './reverbImpulse';
 import { getSfxAudioBuffer } from './sfxBuffers';
-import { AmbientVoice, type AmbientPack } from './ambientSynth';
+import { AmbientVoice, type AmbientPack, type AmbientVoiceLike } from './ambientSynth';
+import { CustomAmbientVoice } from './ambientCustomVoice';
+import { getAmbientCustomBuffer } from './ambientBuffers';
 import { WakeLockManager } from './wakeLock';
 import { createSilentAudioElement } from './silentAudio';
 import { BackgroundEngine } from './BackgroundEngine';
@@ -59,7 +61,7 @@ class AudioEngine {
   private sfxVoices = new Map<string, ActiveSfxVoice>();
   private clipVoices = new Map<string, ActiveClipVoice>();
   private auditionVoice: { source: AudioBufferSourceNode; envelope: GainNode } | null = null;
-  private ambientVoicesByKey = new Map<string, AmbientVoice>();
+  private ambientVoicesByKey = new Map<string, AmbientVoiceLike>();
   private ambientPack: AmbientPack = 'warm';
   private silentAudio: HTMLAudioElement | null = null;
   private wakeLock = new WakeLockManager();
@@ -474,18 +476,27 @@ class AudioEngine {
       return;
     }
 
-    const quality = useSetStore.getState().current.ambientQuality;
+    const customPad = useSetStore.getState().current.ambientPads.find((p) => p.id === key);
+    let voice: AmbientVoiceLike;
+    let detail: string;
+
+    if (customPad?.libraryId) {
+      const buffer = await getAmbientCustomBuffer(ctx, customPad.libraryId);
+      if (!buffer) {
+        useToastStore.getState().push(`Couldn't play "${customPad.label ?? key}" — using the built-in pad instead.`);
+        voice = this.buildSynthVoice(ctx, key);
+        detail = useSetStore.getState().current.ambientQuality.toUpperCase();
+      } else {
+        voice = new CustomAmbientVoice(ctx, buffer, dbToGain(customPad.trimDb ?? 0), this.buses.ambient.input);
+        detail = customPad.label ?? 'Custom';
+      }
+    } else {
+      voice = this.buildSynthVoice(ctx, key);
+      detail = useSetStore.getState().current.ambientQuality.toUpperCase();
+    }
+
     const previousKey = activeKey;
     const previousVoice = previousKey ? this.ambientVoicesByKey.get(previousKey) : undefined;
-
-    const voice = new AmbientVoice(
-      ctx,
-      key,
-      quality,
-      this.ambientPack,
-      this.buses.ambient.input,
-      this.reverbConvolver,
-    );
 
     if (previousVoice && previousKey) {
       previousVoice.release(AMBIENT_CROSSFADE_SEC);
@@ -496,10 +507,15 @@ class AudioEngine {
     }
 
     this.ambientVoicesByKey.set(key, voice);
-    usePlaybackStore.getState().setAmbientKey(key);
+    usePlaybackStore.getState().setAmbientKey(key, detail);
   }
 
-  private scheduleAmbientRemoval(key: string, voice: AmbientVoice, durationSec: number): void {
+  private buildSynthVoice(ctx: AudioContext, key: string): AmbientVoice {
+    const quality = useSetStore.getState().current.ambientQuality;
+    return new AmbientVoice(ctx, key, quality, this.ambientPack, this.buses.ambient.input, this.reverbConvolver);
+  }
+
+  private scheduleAmbientRemoval(key: string, voice: AmbientVoiceLike, durationSec: number): void {
     window.setTimeout(() => {
       if (this.ambientVoicesByKey.get(key) === voice) this.ambientVoicesByKey.delete(key);
     }, durationSec * 1000 + 150);

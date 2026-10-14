@@ -4,6 +4,18 @@
 export type AmbientQuality = 'major' | 'minor';
 export type AmbientPack = 'warm' | 'airy';
 
+/** Common surface for anything that can sound on an Ambient key - the
+ * built-in synth voice below, or a custom-audio voice (ambientCustomVoice.ts)
+ * when the key has its own imported file assigned. The engine's crossfade
+ * and glow-level code only ever talks to this interface. */
+export interface AmbientVoiceLike {
+  attack(durationSec?: number): void;
+  release(durationSec?: number): void;
+  getLevel(): number;
+  dispose(): void;
+  readonly releaseSec: number;
+}
+
 const NOTE_SEMITONES: Record<string, number> = {
   C: 0,
   'C#': 1,
@@ -63,7 +75,7 @@ interface VoiceNodes {
   wetSendGain: GainNode;
 }
 
-export class AmbientVoice {
+export class AmbientVoice implements AmbientVoiceLike {
   private ctx: AudioContext;
   private nodes: VoiceNodes;
   private pack: PackDefinition;
