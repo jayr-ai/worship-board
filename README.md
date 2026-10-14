@@ -6,7 +6,7 @@ Live: https://jayr-ai.github.io/worship-board/
 
 ## Status
 
-**Phase 1 of 7: Scaffold and static UI.** Layout, pad grid, faders (UI only), and placeholder data are built. No audio engine yet.
+**Phase 2 of 7: Audio engine foundation.** Four independent mixer buses + master + limiter, working faders/mute, the built-in synth Ambient pad (Major/Minor, key crossfade, Warm/Airy), synthesized demo Sound Effects, Stop All / Fade All, and iOS audio-session handling are all live. Song Clips and Background still have no real audio (import lands in Phase 3/4).
 
 See the build plan in the original spec for what's next.
 
