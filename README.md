@@ -6,7 +6,7 @@ Live: https://jayr-ai.github.io/worship-board/
 
 ## Status
 
-**Phase 2 of 7: Audio engine foundation.** Four independent mixer buses + master + limiter, working faders/mute, the built-in synth Ambient pad (Major/Minor, key crossfade, Warm/Airy), synthesized demo Sound Effects, Stop All / Fade All, and iOS audio-session handling are all live. Song Clips and Background still have no real audio (import lands in Phase 3/4).
+**Phase 3 of 7: Import, library and assignment.** File import (IndexedDB-backed library with dedup), pad edit sheets for Sound Effects and Background (audio picker, label, color, trigger mode, volume trim, Clear Pad), a Library sheet, and real Background streaming (two-deck crossfade, Play/Pause/Next/Loop) are all live and persist across restarts. Song Clips still has no real audio — its clip editor (waveform, markers, trim) is Phase 4.
 
 See the build plan in the original spec for what's next.
 
