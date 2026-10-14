@@ -1,0 +1,26 @@
+.resume-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(11, 21, 48, 0.92);
+  border: none;
+  color: var(--gold-accent);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.wakelock-notice {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 10px;
+}

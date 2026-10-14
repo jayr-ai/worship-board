@@ -10,7 +10,7 @@ interface SectionProps {
   subtitle: string;
   accent: PadAccent;
   pads: PadAssignment[];
-  activePadId?: string | null;
+  activePadIds: Set<string>;
   showProgress?: boolean;
   width: number;
   footer: ReactNode;
@@ -18,6 +18,7 @@ interface SectionProps {
   faderDefault: number;
   faderMuted: boolean;
   onPadPointerDown: (padId: string) => void;
+  onPadPointerUp?: (padId: string) => void;
   onFaderChange: (value: number) => void;
   onFaderMuteToggle: () => void;
 }
@@ -28,7 +29,7 @@ export function Section({
   subtitle,
   accent,
   pads,
-  activePadId,
+  activePadIds,
   showProgress,
   width,
   footer,
@@ -36,6 +37,7 @@ export function Section({
   faderDefault,
   faderMuted,
   onPadPointerDown,
+  onPadPointerUp,
   onFaderChange,
   onFaderMuteToggle,
 }: SectionProps) {
@@ -66,9 +68,10 @@ export function Section({
                 label={pad.label}
                 tag={pad.tag}
                 duration={pad.durationSec ? `${pad.durationSec.toFixed(1)}s` : undefined}
-                active={pad.id === activePadId}
+                active={activePadIds.has(pad.id)}
                 showProgress={showProgress}
                 onPointerDown={() => onPadPointerDown(pad.id)}
+                onPointerUp={onPadPointerUp ? () => onPadPointerUp(pad.id) : undefined}
               />
             ))}
           </div>

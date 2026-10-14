@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Stage } from './components/Stage';
 import { TopBar } from './components/TopBar';
 import { Section } from './components/Section';
@@ -6,7 +6,10 @@ import { AmbientSection } from './components/AmbientSection';
 import { SegmentedControl } from './components/SegmentedControl';
 import { Chip } from './components/Chip';
 import { TransportRow } from './components/TransportRow';
+import { AudioNotices } from './components/AudioNotices';
 import { useUIStore } from './store/useUIStore';
+import { usePlaybackStore } from './store/usePlaybackStore';
+import { audioEngine } from './audio/AudioEngine';
 import {
   clipsBankA,
   clipsBankB,
@@ -18,6 +21,7 @@ import {
 import './App.css';
 
 const DEFAULTS = { clips: 0.8, sfx: 1, bg: 0.25, ambient: 0.4 };
+const EMPTY_SET: Set<string> = new Set();
 
 function App() {
   const {
@@ -25,6 +29,7 @@ function App() {
     muted,
     banks,
     ambientQuality,
+    ambientPack,
     autoDuck,
     locked,
     demoActivePad,
@@ -32,33 +37,50 @@ function App() {
     toggleMute,
     setBank,
     setAmbientQuality,
+    setAmbientPack,
     toggleAutoDuck,
     toggleLocked,
     setDemoActivePad,
   } = useUIStore();
 
+  const activeSfxPadIds = usePlaybackStore((s) => s.activeSfxPadIds);
+  const activeAmbientKey = usePlaybackStore((s) => s.activeAmbientKey);
+
   const [bgPlaying, setBgPlaying] = useState(false);
   const [bgLooping, setBgLooping] = useState(false);
+
+  useEffect(() => {
+    audioEngine.bindGlobalUnlock();
+  }, []);
 
   const clipsPads = banks.clips === 'bankA' ? clipsBankA : clipsBankB;
   const sfxPads = banks.sfx === 'bankA' ? sfxBankA : sfxBankB;
 
-  // Phase 1 demo-only: tapping a pad toggles a fake "sounding" visual state.
-  // Real triggering (envelopes, polyphony, exclusivity) arrives in Phase 2.
-  const demoTogglePad = (section: 'clips' | 'sfx' | 'bg', padId: string) => {
+  // Song Clips and Background have no real audio yet (Phase 3/4 import), so
+  // tapping a pad there just toggles a fake "sounding" visual state.
+  const demoTogglePad = (section: 'clips' | 'bg', padId: string) => {
     setDemoActivePad(section, demoActivePad[section] === padId ? null : padId);
   };
 
-  const handleStopAll = () => {
+  const clearDemoAndTransport = () => {
     setDemoActivePad('clips', null);
-    setDemoActivePad('sfx', null);
     setDemoActivePad('bg', null);
-    setDemoActivePad('ambient', null);
     setBgPlaying(false);
+  };
+
+  const handleStopAll = () => {
+    clearDemoAndTransport();
+    void audioEngine.stopAll();
+  };
+
+  const handleFadeAll = () => {
+    clearDemoAndTransport();
+    void audioEngine.fadeAll();
   };
 
   return (
     <Stage>
+      <AudioNotices />
       <TopBar
         setName="Sunday Service · Oct 20"
         autoDuck={autoDuck}
@@ -66,7 +88,7 @@ function App() {
         masterValue={levels.master}
         onToggleAutoDuck={toggleAutoDuck}
         onToggleLocked={toggleLocked}
-        onFadeAll={handleStopAll}
+        onFadeAll={handleFadeAll}
         onStopAll={handleStopAll}
         onMasterChange={(v) => setLevel('master', v)}
         onOpenSets={() => {}}
@@ -79,7 +101,7 @@ function App() {
           subtitle="Chorus / verse cuts"
           accent="gold"
           pads={clipsPads}
-          activePadId={demoActivePad.clips}
+          activePadIds={demoActivePad.clips ? new Set([demoActivePad.clips]) : EMPTY_SET}
           showProgress
           width={280}
           faderValue={levels.clips}
@@ -109,12 +131,16 @@ function App() {
           subtitle="Claps, shouts, stings"
           accent="coral"
           pads={sfxPads}
-          activePadId={demoActivePad.sfx}
+          activePadIds={activeSfxPadIds}
           width={280}
           faderValue={levels.sfx}
           faderDefault={DEFAULTS.sfx}
           faderMuted={muted.sfx}
-          onPadPointerDown={(id) => demoTogglePad('sfx', id)}
+          onPadPointerDown={(id) => {
+            const pad = sfxPads.find((p) => p.id === id);
+            if (pad) void audioEngine.triggerSfxDown(pad);
+          }}
+          onPadPointerUp={(id) => audioEngine.triggerSfxUp(id)}
           onFaderChange={(v) => setLevel('sfx', v)}
           onFaderMuteToggle={() => toggleMute('sfx')}
           footer={
@@ -138,7 +164,7 @@ function App() {
           subtitle="Full songs"
           accent="sky"
           pads={bgPads}
-          activePadId={demoActivePad.bg}
+          activePadIds={demoActivePad.bg ? new Set([demoActivePad.bg]) : EMPTY_SET}
           showProgress
           width={280}
           faderValue={levels.bg}
@@ -166,18 +192,22 @@ function App() {
 
         <AmbientSection
           keys={ambientKeys}
-          activeKey={demoActivePad.ambient ?? null}
+          activeKey={activeAmbientKey}
           quality={ambientQuality}
+          pack={ambientPack}
           faderValue={levels.ambient}
           faderDefault={DEFAULTS.ambient}
           faderMuted={muted.ambient}
-          onKeyPointerDown={(key) =>
-            setDemoActivePad('ambient', demoActivePad.ambient === key ? null : key)
-          }
+          onKeyPointerDown={(key) => void audioEngine.playAmbientKey(key)}
           onQualityChange={setAmbientQuality}
+          onPackToggle={() => {
+            const next = ambientPack === 'warm' ? 'airy' : 'warm';
+            setAmbientPack(next);
+            audioEngine.setAmbientPack(next);
+          }}
           onFaderChange={(v) => setLevel('ambient', v)}
           onFaderMuteToggle={() => toggleMute('ambient')}
-          onFadeOut={() => setDemoActivePad('ambient', null)}
+          onFadeOut={() => audioEngine.fadeOutAmbient()}
         />
       </div>
     </Stage>

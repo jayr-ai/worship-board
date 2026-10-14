@@ -11,6 +11,7 @@ interface PadProps {
   active?: boolean;
   showProgress?: boolean;
   onPointerDown?: () => void;
+  onPointerUp?: () => void;
 }
 
 export function Pad({
@@ -22,6 +23,7 @@ export function Pad({
   active = false,
   showProgress = false,
   onPointerDown,
+  onPointerUp,
 }: PadProps) {
   const isEmpty = !label;
 
@@ -33,6 +35,8 @@ export function Pad({
       }`}
       style={{ width: size, height: size }}
       onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerUp}
     >
       {isEmpty ? (
         <span className="pad__empty-content">

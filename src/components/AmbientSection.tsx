@@ -7,11 +7,13 @@ interface AmbientSectionProps {
   keys: string[];
   activeKey: string | null;
   quality: 'major' | 'minor';
+  pack: 'warm' | 'airy';
   faderValue: number;
   faderDefault: number;
   faderMuted: boolean;
   onKeyPointerDown: (key: string) => void;
   onQualityChange: (quality: 'major' | 'minor') => void;
+  onPackToggle: () => void;
   onFaderChange: (value: number) => void;
   onFaderMuteToggle: () => void;
   onFadeOut: () => void;
@@ -21,11 +23,13 @@ export function AmbientSection({
   keys,
   activeKey,
   quality,
+  pack,
   faderValue,
   faderDefault,
   faderMuted,
   onKeyPointerDown,
   onQualityChange,
+  onPackToggle,
   onFaderChange,
   onFaderMuteToggle,
   onFadeOut,
@@ -65,7 +69,11 @@ export function AmbientSection({
           </div>
 
           <div className="ambient__footer">
-            <Chip label="PAD SOUND" value="Warm Pad" />
+            <Chip
+              label="PAD SOUND"
+              value={pack === 'warm' ? 'Warm Pad' : 'Airy Pad'}
+              onClick={onPackToggle}
+            />
             <Chip label="CROSSFADE KEYS" value="2 sec" />
             <button type="button" className="ambient__fadeout" onClick={onFadeOut}>
               FADE OUT
