@@ -6,7 +6,7 @@ Live: https://jayr-ai.github.io/worship-board/
 
 ## Status
 
-**Phase 5 of 7: Glow system.** Every pad now pulses while sounding (Clips/Background/Ambient breathe at 1.6s, sustained Sound Effects modes too), flashes on trigger (one-shot Sound Effects), and fades its glow in real time together with the actual sound — including during an Ambient key or Background crossfade, where the outgoing pad visibly dims as the incoming one brightens. A PULSE toggle in the top bar swaps pulsing for a steady glow. All of it runs off a single rAF loop writing a CSS custom property directly to the DOM, so it never triggers a React re-render.
+**Phase 6 of 7: Auto-Duck, Lock, and Sets.** Named Sets (New/Duplicate/Rename/Delete/Switch) now hold everything about a service — pad assignments, levels, mutes, Ambient pack/quality, exclusive-clips and default fade-out — and autosave on every change. Export a set (or back up everything) as a .zip with its audio via the iPad share sheet; import dedupes by content hash and always lands as a new set. Auto-Duck is real: Sound Effects duck Background −6dB with proper attack/hold/release, optionally ducking Ambient too. LOCK now actually disables EDIT/Library/Sets/Settings while leaving pads and faders free to play, with an option to lock faders too.
 
 See the build plan in the original spec for what's next.
 
