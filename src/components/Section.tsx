@@ -28,6 +28,8 @@ interface SectionProps {
   onToggleEdit?: () => void;
   onPadEdit?: (padId: string) => void;
   formatDuration?: (durationSec: number) => string;
+  editLocked?: boolean;
+  faderDisabled?: boolean;
 }
 
 export function Section({
@@ -52,6 +54,8 @@ export function Section({
   onToggleEdit,
   onPadEdit,
   formatDuration,
+  editLocked = false,
+  faderDisabled = false,
 }: SectionProps) {
   return (
     <section
@@ -68,6 +72,7 @@ export function Section({
           type="button"
           className={`section__edit ${editMode ? 'section__edit--active' : ''}`}
           onClick={onToggleEdit}
+          disabled={editLocked}
         >
           EDIT
         </button>
@@ -113,6 +118,7 @@ export function Section({
           value={faderValue}
           defaultValue={faderDefault}
           muted={faderMuted}
+          disabled={faderDisabled}
           onChange={onFaderChange}
           onToggleMute={onFaderMuteToggle}
         />

@@ -6,6 +6,7 @@ interface TopBarProps {
   locked: boolean;
   pulseAnimation: boolean;
   masterValue: number;
+  masterDisabled?: boolean;
   onToggleAutoDuck: () => void;
   onToggleLocked: () => void;
   onTogglePulse: () => void;
@@ -14,6 +15,7 @@ interface TopBarProps {
   onMasterChange: (value: number) => void;
   onOpenSets: () => void;
   onOpenLibrary: () => void;
+  onOpenSettings: () => void;
 }
 
 export function TopBar({
@@ -22,6 +24,7 @@ export function TopBar({
   locked,
   pulseAnimation,
   masterValue,
+  masterDisabled = false,
   onToggleAutoDuck,
   onToggleLocked,
   onTogglePulse,
@@ -30,16 +33,26 @@ export function TopBar({
   onMasterChange,
   onOpenSets,
   onOpenLibrary,
+  onOpenSettings,
 }: TopBarProps) {
   return (
     <div className={`topbar ${locked ? 'topbar--locked' : ''}`}>
       <div className="topbar__left">
         <h1 className="topbar__title">WORSHIP BOARD</h1>
-        <button type="button" className="topbar__set" onClick={onOpenSets}>
+        <button type="button" className="topbar__set" onClick={onOpenSets} disabled={locked}>
           {setName} ▾
         </button>
-        <button type="button" className="topbar__set" onClick={onOpenLibrary}>
+        <button type="button" className="topbar__set" onClick={onOpenLibrary} disabled={locked}>
           Library
+        </button>
+        <button
+          type="button"
+          className="topbar__set topbar__set--icon"
+          onClick={onOpenSettings}
+          disabled={locked}
+          aria-label="Settings"
+        >
+          ⚙
         </button>
       </div>
 
@@ -48,6 +61,7 @@ export function TopBar({
           type="button"
           className={`topbar__toggle ${autoDuck ? 'topbar__toggle--active' : ''}`}
           onClick={onToggleAutoDuck}
+          disabled={locked}
         >
           AUTO-DUCK
         </button>
@@ -62,6 +76,7 @@ export function TopBar({
           type="button"
           className={`topbar__toggle ${pulseAnimation ? 'topbar__toggle--active' : ''}`}
           onClick={onTogglePulse}
+          disabled={locked}
         >
           PULSE
         </button>
@@ -72,7 +87,7 @@ export function TopBar({
           STOP ALL
         </button>
 
-        <div className="topbar__master">
+        <div className={`topbar__master ${masterDisabled ? 'topbar__master--disabled' : ''}`}>
           <span className="topbar__master-label">MASTER</span>
           <input
             type="range"
@@ -81,6 +96,7 @@ export function TopBar({
             value={Math.round(masterValue * 100)}
             onChange={(e) => onMasterChange(Number(e.target.value) / 100)}
             className="topbar__master-slider"
+            disabled={masterDisabled}
           />
           <span className="topbar__master-value">{Math.round(masterValue * 100)}%</span>
         </div>

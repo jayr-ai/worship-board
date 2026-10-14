@@ -10,7 +10,7 @@ import { WakeLockManager } from './wakeLock';
 import { createSilentAudioElement } from './silentAudio';
 import { BackgroundEngine } from './BackgroundEngine';
 import { useLibraryStore } from '../store/useLibraryStore';
-import { useAssignmentsStore } from '../store/useAssignmentsStore';
+import { useSetStore } from '../store/useSetStore';
 import { decodeLibraryItem, getTrimmedClipBuffer } from './clipBuffers';
 import { computePeaks } from './peaks';
 import { glowEngine } from './glowEngine';
@@ -21,6 +21,10 @@ const AMBIENT_FADE_OUT_SEC = 4;
 const AMBIENT_CROSSFADE_SEC = 2;
 const EXCLUSIVE_CLIP_FADE_SEC = 0.8;
 const RAMP_MS = 8;
+const AUTO_DUCK_AMOUNT_DB = -6;
+const AUTO_DUCK_ATTACK_SEC = 0.04;
+const AUTO_DUCK_RELEASE_SEC = 0.7;
+const AUTO_DUCK_MAX_HOLD_SEC = 3;
 
 interface Bus {
   input: GainNode;
@@ -60,6 +64,7 @@ class AudioEngine {
   private globalUnlockBound = false;
   private background: BackgroundEngine | null = null;
   private bgObjectUrls = new Map<string, string>();
+  private duckReleaseTimer: number | null = null;
 
   bindGlobalUnlock(): void {
     if (this.globalUnlockBound) return;
@@ -78,7 +83,7 @@ class AudioEngine {
       this.ctx = ctx;
       this.buildGraph(ctx);
       this.applyCurrentLevels(true);
-      useUIStore.subscribe(() => {
+      useSetStore.subscribe(() => {
         this.applyCurrentLevels(false);
       });
 
@@ -120,7 +125,7 @@ class AudioEngine {
 
   private buildGraph(ctx: AudioContext): void {
     this.masterGain = ctx.createGain();
-    this.masterGain.gain.value = faderValueToGain(useUIStore.getState().levels.master);
+    this.masterGain.gain.value = faderValueToGain(useSetStore.getState().current.levels.master);
 
     this.limiter = ctx.createDynamicsCompressor();
     this.limiter.threshold.value = -3;
@@ -136,7 +141,7 @@ class AudioEngine {
       clips: this.createBus(ctx, false),
       sfx: this.createBus(ctx, false),
       bg: this.createBus(ctx, true),
-      ambient: this.createBus(ctx, false),
+      ambient: this.createBus(ctx, true),
     };
 
     this.reverbConvolver = ctx.createConvolver();
@@ -174,7 +179,7 @@ class AudioEngine {
   private applyCurrentLevels(immediate: boolean): void {
     if (!this.ctx) return;
     const ctx = this.ctx;
-    const { levels, muted } = useUIStore.getState();
+    const { levels, muted } = useSetStore.getState().current;
     const ms = immediate ? 0 : RAMP_MS;
 
     const setGain = (param: AudioParam, value: number) => {
@@ -216,6 +221,41 @@ class AudioEngine {
     return this.background?.getPadLevel(padId) ?? 0;
   }
 
+  // ---- Auto-Duck (6.6): SFX temporarily lowers Background (and optionally
+  // Ambient). Overlapping SFX extend the hold instead of stacking, since
+  // every duck ramps to the same fixed target rather than compounding. ----
+
+  private applyDuck(holdSec: number): void {
+    const ctx = this.ctx;
+    if (!ctx || !useUIStore.getState().autoDuckEnabled) return;
+
+    const targets = [this.buses.bg.duck!];
+    if (useUIStore.getState().duckAmbientToo) targets.push(this.buses.ambient.duck!);
+
+    const now = ctx.currentTime;
+    const duckGain = dbToGain(AUTO_DUCK_AMOUNT_DB);
+    for (const node of targets) {
+      node.gain.cancelScheduledValues(now);
+      node.gain.setValueAtTime(node.gain.value, now);
+      node.gain.linearRampToValueAtTime(duckGain, now + AUTO_DUCK_ATTACK_SEC);
+    }
+
+    if (this.duckReleaseTimer != null) window.clearTimeout(this.duckReleaseTimer);
+    this.duckReleaseTimer = window.setTimeout(() => this.releaseDuck(), holdSec * 1000);
+  }
+
+  private releaseDuck(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    for (const node of [this.buses.bg.duck!, this.buses.ambient.duck!]) {
+      node.gain.cancelScheduledValues(now);
+      node.gain.setValueAtTime(node.gain.value, now);
+      node.gain.linearRampToValueAtTime(1, now + AUTO_DUCK_RELEASE_SEC);
+    }
+    this.duckReleaseTimer = null;
+  }
+
   // ---- Song Clips (section 1) --------------------------------------------
 
   /** Waveform for the clip editor: cached on the library item after the
@@ -249,7 +289,7 @@ class AudioEngine {
       return;
     }
 
-    if (useUIStore.getState().exclusiveClips) {
+    if (useSetStore.getState().current.exclusiveClips) {
       for (const otherId of [...this.clipVoices.keys()]) {
         this.stopClipVoice(otherId, EXCLUSIVE_CLIP_FADE_SEC);
       }
@@ -375,6 +415,7 @@ class AudioEngine {
 
     this.sfxVoices.set(pad.id, { source, envelope, mode, peakGain });
     usePlaybackStore.getState().setSfxActive(pad.id, true);
+    this.applyDuck(mode === 'oneshot' ? Math.min(buffer.duration, AUTO_DUCK_MAX_HOLD_SEC) : AUTO_DUCK_MAX_HOLD_SEC);
 
     if (mode === 'oneshot') {
       // Flash is independent of the real envelope (5.4): a fixed 60ms rise
@@ -422,7 +463,7 @@ class AudioEngine {
       return;
     }
 
-    const quality = useUIStore.getState().ambientQuality;
+    const quality = useSetStore.getState().current.ambientQuality;
     const previousKey = activeKey;
     const previousVoice = previousKey ? this.ambientVoicesByKey.get(previousKey) : undefined;
 
@@ -497,7 +538,7 @@ class AudioEngine {
     const padId = this.background?.playingPadId;
     if (padId) {
       const looping = usePlaybackStore.getState().bgLooping;
-      void useAssignmentsStore.getState().updatePad(padId, { tag: looping ? 'LOOP' : 'ONCE' });
+      void useSetStore.getState().updatePad(padId, { tag: looping ? 'LOOP' : 'ONCE' });
     }
   }
 
@@ -515,7 +556,7 @@ class AudioEngine {
   async stopAll(): Promise<void> {
     if (!this.ctx) return;
     const ctx = this.ctx;
-    const masterTarget = faderValueToGain(useUIStore.getState().levels.master);
+    const masterTarget = faderValueToGain(useSetStore.getState().current.levels.master);
     rampParam(this.masterGain.gain, 0, ctx, STOP_ALL_MS);
     await delay(STOP_ALL_MS + 10);
     this.stopAllVoices();
@@ -526,7 +567,7 @@ class AudioEngine {
   async fadeAll(durationSec = FADE_ALL_SEC): Promise<void> {
     if (!this.ctx) return;
     const ctx = this.ctx;
-    const masterTarget = faderValueToGain(useUIStore.getState().levels.master);
+    const masterTarget = faderValueToGain(useSetStore.getState().current.levels.master);
     rampParam(this.masterGain.gain, 0, ctx, durationSec * 1000);
     await delay(durationSec * 1000 + 20);
     this.stopAllVoices();

@@ -26,3 +26,8 @@
   font-weight: 600;
   color: var(--text-secondary);
 }
+
+.chip:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}

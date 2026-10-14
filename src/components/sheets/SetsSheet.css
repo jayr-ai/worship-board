@@ -1,0 +1,96 @@
+.sets__reminder {
+  background: rgba(228, 185, 60, 0.12);
+  border: 1px solid var(--gold-a);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.sets__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.sets__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+}
+
+.sets__row--current {
+  border-color: var(--gold-a);
+}
+
+.sets__name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sets__current-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold-a);
+  flex-shrink: 0;
+}
+
+.sets__rename-input {
+  flex: 1;
+  height: 32px;
+}
+
+.sets__icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sets__icon-btn:disabled {
+  opacity: 0.3;
+}
+
+.sets__icon-btn--danger {
+  color: var(--coral-a);
+}
+
+.sets__new-btn {
+  height: 44px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1.5px dashed var(--tile-border-alt);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sets__backup-row {
+  display: flex;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--panel-border);
+}

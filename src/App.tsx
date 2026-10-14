@@ -10,9 +10,11 @@ import { AudioNotices } from './components/AudioNotices';
 import { PadEditSheet } from './components/sheets/PadEditSheet';
 import { LibrarySheet } from './components/sheets/LibrarySheet';
 import { ClipEditorSheet } from './components/sheets/ClipEditorSheet';
+import { SetsSheet } from './components/sheets/SetsSheet';
+import { SettingsSheet } from './components/sheets/SettingsSheet';
 import { useUIStore } from './store/useUIStore';
 import { usePlaybackStore } from './store/usePlaybackStore';
-import { useAssignmentsStore } from './store/useAssignmentsStore';
+import { useSetStore } from './store/useSetStore';
 import { useLibraryStore } from './store/useLibraryStore';
 import { audioEngine } from './audio/AudioEngine';
 import { formatDuration } from './utils/formatDuration';
@@ -39,28 +41,10 @@ function editingKindForPadId(padId: string): 'clips' | 'sfx' | 'bg' | null {
 }
 
 function App() {
-  const {
-    levels,
-    muted,
-    banks,
-    ambientQuality,
-    ambientPack,
-    autoDuck,
-    locked,
-    exclusiveClips,
-    defaultClipFadeOutSec,
-    pulseAnimation,
-    setLevel,
-    toggleMute,
-    setBank,
-    setAmbientQuality,
-    setAmbientPack,
-    toggleAutoDuck,
-    toggleLocked,
-    toggleExclusiveClips,
-    cycleDefaultClipFadeOut,
-    togglePulseAnimation,
-  } = useUIStore();
+  const { banks, locked, pulseAnimation, autoDuckEnabled, duckAmbientToo, lockFadersToo, lastBackupAt } =
+    useUIStore();
+  const { setBank, toggleLocked, togglePulseAnimation, toggleAutoDuckEnabled, toggleDuckAmbientToo, toggleLockFadersToo } =
+    useUIStore();
 
   const activeSfxPadIds = usePlaybackStore((s) => s.activeSfxPadIds);
   const activeClipPadIds = usePlaybackStore((s) => s.activeClipPadIds);
@@ -68,20 +52,47 @@ function App() {
   const bgPlaying = usePlaybackStore((s) => s.bgPlaying);
   const bgLooping = usePlaybackStore((s) => s.bgLooping);
 
-  const { clipsBankA, clipsBankB, sfxBankA, sfxBankB, bgPads, updatePad, clearPad } =
-    useAssignmentsStore();
+  const {
+    current,
+    setsIndex,
+    updatePad,
+    clearPad,
+    setLevel,
+    toggleMute,
+    setAmbientQuality,
+    setAmbientPack,
+    toggleExclusiveClips,
+    cycleDefaultClipFadeOut,
+  } = useSetStore();
+  const { clipsBankA, clipsBankB, sfxBankA, sfxBankB, bgPads, levels, muted, ambientQuality, ambientPack, exclusiveClips, defaultClipFadeOutSec } =
+    current;
+
   const library = useLibraryStore();
 
   const [editingSection, setEditingSection] = useState<EditingSection>(null);
   const [editingPadId, setEditingPadId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [setsOpen, setSetsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     audioEngine.bindGlobalUnlock();
-    void useAssignmentsStore.getState().load();
+    void useSetStore.getState().load();
     void useLibraryStore.getState().load();
+    void useUIStore.getState().loadPrefs();
     navigator.storage?.persist?.().catch(() => {});
   }, []);
+
+  // Locking mid-edit should back out of edit mode and close config sheets,
+  // not leave them open but inert.
+  useEffect(() => {
+    if (!locked) return;
+    setEditingSection(null);
+    setEditingPadId(null);
+    setLibraryOpen(false);
+    setSetsOpen(false);
+    setSettingsOpen(false);
+  }, [locked]);
 
   const clipsPads = banks.clips === 'bankA' ? clipsBankA : clipsBankB;
   const sfxPads = banks.sfx === 'bankA' ? sfxBankA : sfxBankB;
@@ -110,19 +121,21 @@ function App() {
     <Stage>
       <AudioNotices />
       <TopBar
-        setName="Sunday Service · Oct 20"
-        autoDuck={autoDuck}
+        setName={current.name}
+        autoDuck={autoDuckEnabled}
         locked={locked}
         pulseAnimation={pulseAnimation}
         masterValue={levels.master}
-        onToggleAutoDuck={toggleAutoDuck}
+        masterDisabled={locked && lockFadersToo}
+        onToggleAutoDuck={toggleAutoDuckEnabled}
         onToggleLocked={toggleLocked}
         onTogglePulse={togglePulseAnimation}
         onFadeAll={handleFadeAll}
         onStopAll={handleStopAll}
-        onMasterChange={(v) => setLevel('master', v)}
-        onOpenSets={() => {}}
+        onMasterChange={(v) => void setLevel('master', v)}
+        onOpenSets={() => setSetsOpen(true)}
         onOpenLibrary={() => setLibraryOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       <div className="board-row">
@@ -139,7 +152,9 @@ function App() {
           faderValue={levels.clips}
           faderDefault={DEFAULTS.clips}
           faderMuted={muted.clips}
+          faderDisabled={locked && lockFadersToo}
           editMode={editingSection === 'clips'}
+          editLocked={locked}
           onToggleEdit={() => setEditingSection(editingSection === 'clips' ? null : 'clips')}
           onPadEdit={(id) => setEditingPadId(id)}
           formatDuration={formatDuration}
@@ -147,8 +162,8 @@ function App() {
             const pad = clipsPads.find((p) => p.id === id);
             if (pad?.libraryId) void audioEngine.triggerClipDown(pad);
           }}
-          onFaderChange={(v) => setLevel('clips', v)}
-          onFaderMuteToggle={() => toggleMute('clips')}
+          onFaderChange={(v) => void setLevel('clips', v)}
+          onFaderMuteToggle={() => void toggleMute('clips')}
           footer={
             <>
               <SegmentedControl
@@ -164,11 +179,13 @@ function App() {
                   label="FADE OUT"
                   value={`${defaultClipFadeOutSec} sec`}
                   onClick={cycleDefaultClipFadeOut}
+                  disabled={locked}
                 />
                 <button
                   type="button"
                   className={`clips-exclusive-toggle ${exclusiveClips ? 'clips-exclusive-toggle--on' : ''}`}
-                  onClick={toggleExclusiveClips}
+                  onClick={() => void toggleExclusiveClips()}
+                  disabled={locked}
                 >
                   EXCLUSIVE {exclusiveClips ? 'ON' : 'OFF'}
                 </button>
@@ -189,7 +206,9 @@ function App() {
           faderValue={levels.sfx}
           faderDefault={DEFAULTS.sfx}
           faderMuted={muted.sfx}
+          faderDisabled={locked && lockFadersToo}
           editMode={editingSection === 'sfx'}
+          editLocked={locked}
           onToggleEdit={() => setEditingSection(editingSection === 'sfx' ? null : 'sfx')}
           onPadEdit={(id) => setEditingPadId(id)}
           formatDuration={formatDuration}
@@ -198,8 +217,8 @@ function App() {
             if (pad) void audioEngine.triggerSfxDown(pad);
           }}
           onPadPointerUp={(id) => audioEngine.triggerSfxUp(id)}
-          onFaderChange={(v) => setLevel('sfx', v)}
-          onFaderMuteToggle={() => toggleMute('sfx')}
+          onFaderChange={(v) => void setLevel('sfx', v)}
+          onFaderMuteToggle={() => void toggleMute('sfx')}
           footer={
             <>
               <SegmentedControl
@@ -228,7 +247,9 @@ function App() {
           faderValue={levels.bg}
           faderDefault={DEFAULTS.bg}
           faderMuted={muted.bg}
+          faderDisabled={locked && lockFadersToo}
           editMode={editingSection === 'bg'}
+          editLocked={locked}
           onToggleEdit={() => setEditingSection(editingSection === 'bg' ? null : 'bg')}
           onPadEdit={(id) => setEditingPadId(id)}
           formatDuration={formatDuration}
@@ -236,8 +257,8 @@ function App() {
             const pad = bgPads.find((p) => p.id === id);
             if (pad?.libraryId) void audioEngine.triggerBackgroundPad(pad);
           }}
-          onFaderChange={(v) => setLevel('bg', v)}
-          onFaderMuteToggle={() => toggleMute('bg')}
+          onFaderChange={(v) => void setLevel('bg', v)}
+          onFaderMuteToggle={() => void toggleMute('bg')}
           footer={
             <>
               <TransportRow
@@ -259,15 +280,17 @@ function App() {
           faderValue={levels.ambient}
           faderDefault={DEFAULTS.ambient}
           faderMuted={muted.ambient}
+          faderDisabled={locked && lockFadersToo}
+          locked={locked}
           onKeyPointerDown={(key) => void audioEngine.playAmbientKey(key)}
-          onQualityChange={setAmbientQuality}
+          onQualityChange={(q) => void setAmbientQuality(q)}
           onPackToggle={() => {
             const next = ambientPack === 'warm' ? 'airy' : 'warm';
-            setAmbientPack(next);
+            void setAmbientPack(next);
             audioEngine.setAmbientPack(next);
           }}
-          onFaderChange={(v) => setLevel('ambient', v)}
-          onFaderMuteToggle={() => toggleMute('ambient')}
+          onFaderChange={(v) => void setLevel('ambient', v)}
+          onFaderMuteToggle={() => void toggleMute('ambient')}
           onFadeOut={() => audioEngine.fadeOutAmbient()}
         />
       </div>
@@ -330,6 +353,43 @@ function App() {
           onRename={(id, label) => void library.renameItem(id, label)}
           onDelete={(id) => void library.deleteItem(id)}
           onDismissErrors={library.dismissImportErrors}
+        />
+      )}
+
+      {setsOpen && (
+        <SetsSheet
+          setsIndex={setsIndex}
+          currentId={current.id}
+          lastBackupAt={lastBackupAt}
+          onClose={() => setSetsOpen(false)}
+          onSwitch={(id) => void useSetStore.getState().switchTo(id)}
+          onCreateNew={(name) => void useSetStore.getState().createNew(name)}
+          onDuplicate={(id, name) => void useSetStore.getState().duplicate(id, name)}
+          onRename={(id, name) => void useSetStore.getState().rename(id, name)}
+          onRemove={(id) => void useSetStore.getState().remove(id)}
+          onExportSet={(id) =>
+            void useSetStore
+              .getState()
+              .exportSet(id)
+              .then(() => useUIStore.getState().noteBackupMade())
+          }
+          onExportAll={() =>
+            void useSetStore
+              .getState()
+              .exportAll()
+              .then(() => useUIStore.getState().noteBackupMade())
+          }
+          onImport={(file) => void useSetStore.getState().importZip(file)}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsSheet
+          duckAmbientToo={duckAmbientToo}
+          lockFadersToo={lockFadersToo}
+          onClose={() => setSettingsOpen(false)}
+          onToggleDuckAmbientToo={toggleDuckAmbientToo}
+          onToggleLockFadersToo={toggleLockFadersToo}
         />
       )}
     </Stage>

@@ -8,6 +8,7 @@ interface FaderProps {
   value: number; // 0..1
   defaultValue: number; // 0..1, used on double-tap reset
   muted: boolean;
+  disabled?: boolean;
   onChange: (value: number) => void;
   onToggleMute: () => void;
 }
@@ -17,6 +18,7 @@ export function Fader({
   value,
   defaultValue,
   muted,
+  disabled = false,
   onChange,
   onToggleMute,
 }: FaderProps) {
@@ -31,21 +33,22 @@ export function Fader({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled) return;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     onChange(valueFromPointer(e.clientY));
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.buttons === 0) return;
+    if (disabled || e.buttons === 0) return;
     onChange(valueFromPointer(e.clientY));
   };
 
-  const handleDoubleClick = () => onChange(defaultValue);
+  const handleDoubleClick = () => !disabled && onChange(defaultValue);
 
   const percent = Math.round(value * 100);
 
   return (
-    <div className={`fader fader--${accent}`}>
+    <div className={`fader fader--${accent} ${disabled ? 'fader--disabled' : ''}`}>
       <div className="fader__readout">{percent}%</div>
       <div
         ref={trackRef}
@@ -62,6 +65,7 @@ export function Fader({
         type="button"
         className={`fader__mute ${muted ? 'fader__mute--active' : ''}`}
         onClick={onToggleMute}
+        disabled={disabled}
         aria-label="Mute"
       >
         M

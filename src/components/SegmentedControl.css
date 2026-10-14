@@ -21,3 +21,8 @@
   background: var(--gold-a);
   color: #0b1530;
 }
+
+.segmented--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}

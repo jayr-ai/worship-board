@@ -17,6 +17,8 @@ interface AmbientSectionProps {
   onFaderChange: (value: number) => void;
   onFaderMuteToggle: () => void;
   onFadeOut: () => void;
+  locked?: boolean;
+  faderDisabled?: boolean;
 }
 
 export function AmbientSection({
@@ -32,6 +34,8 @@ export function AmbientSection({
   onFaderChange,
   onFaderMuteToggle,
   onFadeOut,
+  locked = false,
+  faderDisabled = false,
 }: AmbientSectionProps) {
   return (
     <section className={`ambient ${faderMuted ? 'ambient--muted' : ''}`}>
@@ -52,6 +56,7 @@ export function AmbientSection({
             ]}
             value={quality}
             onChange={onQualityChange}
+            disabled={locked}
           />
 
           <div className="ambient__grid">
@@ -65,6 +70,7 @@ export function AmbientSection({
               label="PAD SOUND"
               value={pack === 'warm' ? 'Warm Pad' : 'Airy Pad'}
               onClick={onPackToggle}
+              disabled={locked}
             />
             <Chip label="CROSSFADE KEYS" value="2 sec" />
             <button type="button" className="ambient__fadeout" onClick={onFadeOut}>
@@ -78,6 +84,7 @@ export function AmbientSection({
           value={faderValue}
           defaultValue={faderDefault}
           muted={faderMuted}
+          disabled={faderDisabled}
           onChange={onFaderChange}
           onToggleMute={onFaderMuteToggle}
         />

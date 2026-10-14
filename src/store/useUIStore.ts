@@ -1,60 +1,82 @@
 import { create } from 'zustand';
 import type { Bank } from '../types';
+import { getAppSetting, putAppSetting, type AppPrefs } from '../storage/db';
 
-const FADE_OUT_PRESETS = [2, 3, 4, 5];
+const DEFAULT_PREFS: AppPrefs = {
+  pulseAnimation: true,
+  autoDuckEnabled: true,
+  duckAmbientToo: false,
+  lockFadersToo: false,
+  lastBackupAt: null,
+};
 
 interface UIState {
-  levels: { clips: number; sfx: number; bg: number; ambient: number; master: number };
-  muted: { clips: boolean; sfx: boolean; bg: boolean; ambient: boolean };
+  // View-only state: which bank is currently displayed. Not part of a Set.
   banks: { clips: Bank; sfx: Bank };
-  ambientQuality: 'major' | 'minor';
-  ambientPack: 'warm' | 'airy';
-  autoDuck: boolean;
+  // Session-only: never persisted, always starts unlocked.
   locked: boolean;
-  exclusiveClips: boolean;
-  defaultClipFadeOutSec: number;
+  // Global app preferences (not per-set), persisted in appSettings.
   pulseAnimation: boolean;
+  autoDuckEnabled: boolean;
+  duckAmbientToo: boolean;
+  lockFadersToo: boolean;
+  lastBackupAt: number | null;
+  prefsLoaded: boolean;
 
-  setLevel: (section: keyof UIState['levels'], value: number) => void;
-  toggleMute: (section: keyof UIState['muted']) => void;
   setBank: (section: 'clips' | 'sfx', bank: Bank) => void;
-  setAmbientQuality: (quality: 'major' | 'minor') => void;
-  setAmbientPack: (pack: 'warm' | 'airy') => void;
-  toggleAutoDuck: () => void;
   toggleLocked: () => void;
-  toggleExclusiveClips: () => void;
-  cycleDefaultClipFadeOut: () => void;
+  loadPrefs: () => Promise<void>;
   togglePulseAnimation: () => void;
+  toggleAutoDuckEnabled: () => void;
+  toggleDuckAmbientToo: () => void;
+  toggleLockFadersToo: () => void;
+  noteBackupMade: () => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  levels: { clips: 0.8, sfx: 1, bg: 0.25, ambient: 0.4, master: 1 },
-  muted: { clips: false, sfx: false, bg: false, ambient: false },
-  banks: { clips: 'bankA', sfx: 'bankA' },
-  ambientQuality: 'major',
-  ambientPack: 'warm',
-  autoDuck: true,
-  locked: false,
-  exclusiveClips: true,
-  defaultClipFadeOutSec: 3,
-  pulseAnimation: true,
+function persistPrefs(state: UIState): void {
+  const prefs: AppPrefs = {
+    pulseAnimation: state.pulseAnimation,
+    autoDuckEnabled: state.autoDuckEnabled,
+    duckAmbientToo: state.duckAmbientToo,
+    lockFadersToo: state.lockFadersToo,
+    lastBackupAt: state.lastBackupAt,
+  };
+  void putAppSetting('prefs', prefs);
+}
 
-  setLevel: (section, value) =>
-    set((state) => ({ levels: { ...state.levels, [section]: value } })),
-  toggleMute: (section) =>
-    set((state) => ({ muted: { ...state.muted, [section]: !state.muted[section] } })),
+export const useUIStore = create<UIState>((set, get) => ({
+  banks: { clips: 'bankA', sfx: 'bankA' },
+  locked: false,
+  ...DEFAULT_PREFS,
+  prefsLoaded: false,
+
   setBank: (section, bank) =>
     set((state) => ({ banks: { ...state.banks, [section]: bank } })),
-  setAmbientQuality: (quality) => set({ ambientQuality: quality }),
-  setAmbientPack: (pack) => set({ ambientPack: pack }),
-  toggleAutoDuck: () => set((state) => ({ autoDuck: !state.autoDuck })),
   toggleLocked: () => set((state) => ({ locked: !state.locked })),
-  toggleExclusiveClips: () => set((state) => ({ exclusiveClips: !state.exclusiveClips })),
-  cycleDefaultClipFadeOut: () =>
-    set((state) => {
-      const idx = FADE_OUT_PRESETS.indexOf(state.defaultClipFadeOutSec);
-      const next = FADE_OUT_PRESETS[(idx + 1) % FADE_OUT_PRESETS.length];
-      return { defaultClipFadeOutSec: next };
-    }),
-  togglePulseAnimation: () => set((state) => ({ pulseAnimation: !state.pulseAnimation })),
+
+  loadPrefs: async () => {
+    const stored = await getAppSetting<AppPrefs>('prefs');
+    set({ ...DEFAULT_PREFS, ...stored, prefsLoaded: true });
+  },
+
+  togglePulseAnimation: () => {
+    set((state) => ({ pulseAnimation: !state.pulseAnimation }));
+    persistPrefs(get());
+  },
+  toggleAutoDuckEnabled: () => {
+    set((state) => ({ autoDuckEnabled: !state.autoDuckEnabled }));
+    persistPrefs(get());
+  },
+  toggleDuckAmbientToo: () => {
+    set((state) => ({ duckAmbientToo: !state.duckAmbientToo }));
+    persistPrefs(get());
+  },
+  toggleLockFadersToo: () => {
+    set((state) => ({ lockFadersToo: !state.lockFadersToo }));
+    persistPrefs(get());
+  },
+  noteBackupMade: () => {
+    set({ lastBackupAt: Date.now() });
+    persistPrefs(get());
+  },
 }));

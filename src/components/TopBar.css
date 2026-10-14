@@ -38,6 +38,26 @@
   font-weight: 600;
 }
 
+.topbar__set--icon {
+  width: 40px;
+  padding: 0;
+  font-size: 16px;
+}
+
+.topbar__set:disabled,
+.topbar__toggle:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.topbar__master--disabled {
+  opacity: 0.4;
+}
+
+.topbar__master--disabled .topbar__master-slider {
+  pointer-events: none;
+}
+
 .topbar__right {
   display: flex;
   align-items: center;

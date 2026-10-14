@@ -8,6 +8,11 @@
   flex-shrink: 0;
 }
 
+.fader--disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .fader--gold {
   --accent: var(--gold-a);
 }

@@ -92,6 +92,11 @@
   letter-spacing: 0.05em;
 }
 
+.section__edit:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .section__edit--active {
   background: var(--gold-a);
   color: #0b1530;
