@@ -55,11 +55,11 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 44px;
-  height: 26px;
+  width: 38px;
+  height: 16px;
   background: var(--text-primary);
   border: 2px solid var(--accent);
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .fader__label {

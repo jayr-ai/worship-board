@@ -58,7 +58,7 @@ export function Fader({
         onDoubleClick={handleDoubleClick}
       >
         <div className="fader__fill" style={{ height: `${percent}%` }} />
-        <div className="fader__thumb" style={{ bottom: `calc(${percent}% - 13px)` }} />
+        <div className="fader__thumb" style={{ bottom: `calc(${percent}% - 8px)` }} />
       </div>
       <div className="fader__label">VOL</div>
       <button
