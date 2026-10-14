@@ -6,7 +6,7 @@ Live: https://jayr-ai.github.io/worship-board/
 
 ## Status
 
-**Phase 3 of 7: Import, library and assignment.** File import (IndexedDB-backed library with dedup), pad edit sheets for Sound Effects and Background (audio picker, label, color, trigger mode, volume trim, Clear Pad), a Library sheet, and real Background streaming (two-deck crossfade, Play/Pause/Next/Loop) are all live and persist across restarts. Song Clips still has no real audio — its clip editor (waveform, markers, trim) is Phase 4.
+**Phase 4 of 7: Song Clips.** The clip editor is live: waveform display, draggable trim handles, zoom, part markers (INTRO/VERSE/PRE-CHORUS/CHORUS/BRIDGE/TAG/OUTRO + custom) saved per song, audition, auto "Song | Section" labels, and sample-accurate fade-out on real playback. Exclusive mode (default on) crossfades between clips at 0.8s; tapping the same pad again fades it out over its own length. All four sections now play real audio and persist across restarts.
 
 See the build plan in the original spec for what's next.
 
