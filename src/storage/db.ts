@@ -1,6 +1,13 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { PadAssignment } from '../types';
 
+export interface ClipMarker {
+  id: string;
+  label: string;
+  startSec: number;
+  endSec: number;
+}
+
 export interface LibraryItem {
   id: string;
   fileName: string;
@@ -10,6 +17,10 @@ export interface LibraryItem {
   mimeType: string;
   blob: Blob;
   createdAt: number;
+  /** Waveform peaks for the clip editor, computed once and cached (section 7). */
+  peaks?: number[];
+  /** Section 1 clip editor: named start/end regions stored on the song. */
+  markers?: ClipMarker[];
 }
 
 interface WorshipBoardDB extends DBSchema {

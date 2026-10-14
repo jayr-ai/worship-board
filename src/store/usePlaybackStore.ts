@@ -4,6 +4,7 @@ import { create } from 'zustand';
 // components only ever read it. Keeps the UI decoupled from audio nodes.
 interface PlaybackState {
   activeSfxPadIds: Set<string>;
+  activeClipPadIds: Set<string>;
   activeAmbientKey: string | null;
   bgPadId: string | null;
   bgPlaying: boolean;
@@ -13,6 +14,7 @@ interface PlaybackState {
   wakeLockUnsupported: boolean;
 
   setSfxActive: (padId: string, active: boolean) => void;
+  setClipActive: (padId: string, active: boolean) => void;
   setAmbientKey: (key: string | null) => void;
   setBackground: (padId: string | null, playing: boolean) => void;
   setBgLooping: (looping: boolean) => void;
@@ -23,6 +25,7 @@ interface PlaybackState {
 
 export const usePlaybackStore = create<PlaybackState>((set) => ({
   activeSfxPadIds: new Set(),
+  activeClipPadIds: new Set(),
   activeAmbientKey: null,
   bgPadId: null,
   bgPlaying: false,
@@ -37,6 +40,13 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       if (active) next.add(padId);
       else next.delete(padId);
       return { activeSfxPadIds: next };
+    }),
+  setClipActive: (padId, active) =>
+    set((state) => {
+      const next = new Set(state.activeClipPadIds);
+      if (active) next.add(padId);
+      else next.delete(padId);
+      return { activeClipPadIds: next };
     }),
   setAmbientKey: (key) => set({ activeAmbientKey: key }),
   setBackground: (padId, playing) => set({ bgPadId: padId, bgPlaying: playing }),

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LibraryItem } from '../storage/db';
+import type { ClipMarker, LibraryItem } from '../storage/db';
 import { deleteLibraryItem, getAllLibraryItems, putLibraryItem } from '../storage/db';
 import { importAudioFiles } from '../storage/importAudio';
 
@@ -13,6 +13,8 @@ interface LibraryState {
   renameItem: (id: string, label: string) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   dismissImportErrors: () => void;
+  savePeaks: (id: string, peaks: Float32Array) => Promise<void>;
+  saveMarkers: (id: string, markers: ClipMarker[]) => Promise<void>;
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
@@ -54,4 +56,20 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   dismissImportErrors: () => set({ importErrors: [] }),
+
+  savePeaks: async (id, peaks) => {
+    const item = get().items.find((i) => i.id === id);
+    if (!item) return;
+    const updated = { ...item, peaks: Array.from(peaks) };
+    await putLibraryItem(updated);
+    set((state) => ({ items: state.items.map((i) => (i.id === id ? updated : i)) }));
+  },
+
+  saveMarkers: async (id, markers) => {
+    const item = get().items.find((i) => i.id === id);
+    if (!item) return;
+    const updated = { ...item, markers };
+    await putLibraryItem(updated);
+    set((state) => ({ items: state.items.map((i) => (i.id === id ? updated : i)) }));
+  },
 }));

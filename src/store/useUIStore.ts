@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import type { Bank, SectionId } from '../types';
+import type { Bank } from '../types';
+
+const FADE_OUT_PRESETS = [2, 3, 4, 5];
 
 interface UIState {
   levels: { clips: number; sfx: number; bg: number; ambient: number; master: number };
@@ -9,10 +11,8 @@ interface UIState {
   ambientPack: 'warm' | 'airy';
   autoDuck: boolean;
   locked: boolean;
-  // Song Clips and Background don't have real audio yet (Phase 3/4 import).
-  // This fakes a "sounding" pad for their visual states in the meantime.
-  // Sound Effects and Ambient are driven by the real engine (usePlaybackStore).
-  demoActivePad: Partial<Record<SectionId, string | null>>;
+  exclusiveClips: boolean;
+  defaultClipFadeOutSec: number;
 
   setLevel: (section: keyof UIState['levels'], value: number) => void;
   toggleMute: (section: keyof UIState['muted']) => void;
@@ -21,7 +21,8 @@ interface UIState {
   setAmbientPack: (pack: 'warm' | 'airy') => void;
   toggleAutoDuck: () => void;
   toggleLocked: () => void;
-  setDemoActivePad: (section: SectionId, padId: string | null) => void;
+  toggleExclusiveClips: () => void;
+  cycleDefaultClipFadeOut: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -32,7 +33,8 @@ export const useUIStore = create<UIState>((set) => ({
   ambientPack: 'warm',
   autoDuck: true,
   locked: false,
-  demoActivePad: {},
+  exclusiveClips: true,
+  defaultClipFadeOutSec: 3,
 
   setLevel: (section, value) =>
     set((state) => ({ levels: { ...state.levels, [section]: value } })),
@@ -44,6 +46,11 @@ export const useUIStore = create<UIState>((set) => ({
   setAmbientPack: (pack) => set({ ambientPack: pack }),
   toggleAutoDuck: () => set((state) => ({ autoDuck: !state.autoDuck })),
   toggleLocked: () => set((state) => ({ locked: !state.locked })),
-  setDemoActivePad: (section, padId) =>
-    set((state) => ({ demoActivePad: { ...state.demoActivePad, [section]: padId } })),
+  toggleExclusiveClips: () => set((state) => ({ exclusiveClips: !state.exclusiveClips })),
+  cycleDefaultClipFadeOut: () =>
+    set((state) => {
+      const idx = FADE_OUT_PRESETS.indexOf(state.defaultClipFadeOutSec);
+      const next = FADE_OUT_PRESETS[(idx + 1) % FADE_OUT_PRESETS.length];
+      return { defaultClipFadeOutSec: next };
+    }),
 }));

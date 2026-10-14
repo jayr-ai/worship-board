@@ -4,3 +4,30 @@
   gap: 10px;
   min-height: 0;
 }
+
+.clips-footer-row {
+  display: flex;
+  gap: 8px;
+}
+
+.clips-footer-row .chip {
+  flex: 1;
+}
+
+.clips-exclusive-toggle {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.clips-exclusive-toggle--on {
+  background: var(--gold-a);
+  color: #0b1530;
+  border-color: var(--gold-a);
+}

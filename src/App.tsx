@@ -9,19 +9,20 @@ import { TransportRow } from './components/TransportRow';
 import { AudioNotices } from './components/AudioNotices';
 import { PadEditSheet } from './components/sheets/PadEditSheet';
 import { LibrarySheet } from './components/sheets/LibrarySheet';
+import { ClipEditorSheet } from './components/sheets/ClipEditorSheet';
 import { useUIStore } from './store/useUIStore';
 import { usePlaybackStore } from './store/usePlaybackStore';
 import { useAssignmentsStore } from './store/useAssignmentsStore';
 import { useLibraryStore } from './store/useLibraryStore';
 import { audioEngine } from './audio/AudioEngine';
 import { formatDuration } from './utils/formatDuration';
-import { clipsBankA, clipsBankB, ambientKeys } from './data/placeholderData';
+import { ambientKeys } from './data/placeholderData';
 import './App.css';
 
 const DEFAULTS = { clips: 0.8, sfx: 1, bg: 0.25, ambient: 0.4 };
 const EMPTY_SET: Set<string> = new Set();
 
-type EditingSection = 'sfx' | 'bg' | null;
+type EditingSection = 'clips' | 'sfx' | 'bg' | null;
 
 const MODE_TAG: Record<string, string> = {
   oneshot: 'ONE-SHOT',
@@ -29,6 +30,13 @@ const MODE_TAG: Record<string, string> = {
   loop: 'LOOP',
   toggle: 'TOGGLE',
 };
+
+function editingKindForPadId(padId: string): 'clips' | 'sfx' | 'bg' | null {
+  if (padId.startsWith('clips-')) return 'clips';
+  if (padId.startsWith('sfx-')) return 'sfx';
+  if (padId.startsWith('bg-')) return 'bg';
+  return null;
+}
 
 function App() {
   const {
@@ -39,7 +47,8 @@ function App() {
     ambientPack,
     autoDuck,
     locked,
-    demoActivePad,
+    exclusiveClips,
+    defaultClipFadeOutSec,
     setLevel,
     toggleMute,
     setBank,
@@ -47,16 +56,19 @@ function App() {
     setAmbientPack,
     toggleAutoDuck,
     toggleLocked,
-    setDemoActivePad,
+    toggleExclusiveClips,
+    cycleDefaultClipFadeOut,
   } = useUIStore();
 
   const activeSfxPadIds = usePlaybackStore((s) => s.activeSfxPadIds);
+  const activeClipPadIds = usePlaybackStore((s) => s.activeClipPadIds);
   const activeAmbientKey = usePlaybackStore((s) => s.activeAmbientKey);
   const bgPadId = usePlaybackStore((s) => s.bgPadId);
   const bgPlaying = usePlaybackStore((s) => s.bgPlaying);
   const bgLooping = usePlaybackStore((s) => s.bgLooping);
 
-  const { sfxBankA, sfxBankB, bgPads, updatePad, clearPad } = useAssignmentsStore();
+  const { clipsBankA, clipsBankB, sfxBankA, sfxBankB, bgPads, updatePad, clearPad } =
+    useAssignmentsStore();
   const library = useLibraryStore();
 
   const [editingSection, setEditingSection] = useState<EditingSection>(null);
@@ -81,30 +93,17 @@ function App() {
     tag: pad.libraryId ? pad.tag ?? 'ONCE' : pad.tag,
   }));
 
+  const editingKind = editingPadId ? editingKindForPadId(editingPadId) : null;
   const editingPad = editingPadId
-    ? [...sfxBankA, ...sfxBankB, ...bgPads].find((p) => p.id === editingPadId)
+    ? [...clipsBankA, ...clipsBankB, ...sfxBankA, ...sfxBankB, ...bgPads].find(
+        (p) => p.id === editingPadId,
+      )
     : null;
-  const editingIsBackground = editingPadId?.startsWith('bg-') ?? false;
 
-  // Song Clips has no real audio yet (Phase 4: clip editor), so tapping a
-  // pad there just toggles a fake "sounding" visual state.
-  const demoTogglePad = (padId: string) => {
-    setDemoActivePad('clips', demoActivePad.clips === padId ? null : padId);
-  };
+  const closePadEdit = () => setEditingPadId(null);
 
-  const handleStopAll = () => {
-    setDemoActivePad('clips', null);
-    void audioEngine.stopAll();
-  };
-
-  const handleFadeAll = () => {
-    setDemoActivePad('clips', null);
-    void audioEngine.fadeAll();
-  };
-
-  const closePadEdit = () => {
-    setEditingPadId(null);
-  };
+  const handleStopAll = () => void audioEngine.stopAll();
+  const handleFadeAll = () => void audioEngine.fadeAll();
 
   return (
     <Stage>
@@ -130,13 +129,20 @@ function App() {
           subtitle="Chorus / verse cuts"
           accent="gold"
           pads={clipsPads}
-          activePadIds={demoActivePad.clips ? new Set([demoActivePad.clips]) : EMPTY_SET}
+          activePadIds={activeClipPadIds}
           showProgress
           width={280}
           faderValue={levels.clips}
           faderDefault={DEFAULTS.clips}
           faderMuted={muted.clips}
-          onPadPointerDown={demoTogglePad}
+          editMode={editingSection === 'clips'}
+          onToggleEdit={() => setEditingSection(editingSection === 'clips' ? null : 'clips')}
+          onPadEdit={(id) => setEditingPadId(id)}
+          formatDuration={formatDuration}
+          onPadPointerDown={(id) => {
+            const pad = clipsPads.find((p) => p.id === id);
+            if (pad?.libraryId) void audioEngine.triggerClipDown(pad);
+          }}
           onFaderChange={(v) => setLevel('clips', v)}
           onFaderMuteToggle={() => toggleMute('clips')}
           footer={
@@ -149,7 +155,20 @@ function App() {
                 value={banks.clips}
                 onChange={(v) => setBank('clips', v)}
               />
-              <Chip label="FADE OUT" value="3 sec" />
+              <div className="clips-footer-row">
+                <Chip
+                  label="FADE OUT"
+                  value={`${defaultClipFadeOutSec} sec`}
+                  onClick={cycleDefaultClipFadeOut}
+                />
+                <button
+                  type="button"
+                  className={`clips-exclusive-toggle ${exclusiveClips ? 'clips-exclusive-toggle--on' : ''}`}
+                  onClick={toggleExclusiveClips}
+                >
+                  EXCLUSIVE {exclusiveClips ? 'ON' : 'OFF'}
+                </button>
+              </div>
             </>
           }
         />
@@ -248,11 +267,23 @@ function App() {
         />
       </div>
 
-      {editingPad && (
+      {editingPad && editingKind === 'clips' && (
+        <ClipEditorSheet
+          pad={editingPad}
+          library={library.items}
+          defaultFadeOutSec={defaultClipFadeOutSec}
+          onClose={closePadEdit}
+          onAssign={(patch) => void updatePad(editingPad.id, patch)}
+          onClear={() => void clearPad(editingPad.id)}
+          onImportNew={(file) => useLibraryStore.getState().importFiles([file]).then((r) => r[0] ?? null)}
+        />
+      )}
+
+      {editingPad && (editingKind === 'sfx' || editingKind === 'bg') && (
         <PadEditSheet
           pad={editingPad}
-          sectionLabel={editingIsBackground ? 'Background' : 'Sound Effects'}
-          showModeSelector={!editingIsBackground}
+          sectionLabel={editingKind === 'bg' ? 'Background' : 'Sound Effects'}
+          showModeSelector={editingKind === 'sfx'}
           library={library.items}
           onClose={closePadEdit}
           onChooseLibraryItem={(item) =>

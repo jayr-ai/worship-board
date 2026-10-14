@@ -11,11 +11,14 @@ import { createSilentAudioElement } from './silentAudio';
 import { BackgroundEngine } from './BackgroundEngine';
 import { useLibraryStore } from '../store/useLibraryStore';
 import { useAssignmentsStore } from '../store/useAssignmentsStore';
+import { decodeLibraryItem, getTrimmedClipBuffer } from './clipBuffers';
+import { computePeaks } from './peaks';
 
 const FADE_ALL_SEC = 3;
 const STOP_ALL_MS = 80;
 const AMBIENT_FADE_OUT_SEC = 4;
 const AMBIENT_CROSSFADE_SEC = 2;
+const EXCLUSIVE_CLIP_FADE_SEC = 0.8;
 const RAMP_MS = 8;
 
 interface Bus {
@@ -31,6 +34,11 @@ interface ActiveSfxVoice {
   mode: TriggerMode;
 }
 
+interface ActiveClipVoice {
+  source: AudioBufferSourceNode;
+  envelope: GainNode;
+}
+
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 class AudioEngine {
@@ -40,6 +48,8 @@ class AudioEngine {
   private buses!: Record<SectionId, Bus>;
   private reverbConvolver!: ConvolverNode;
   private sfxVoices = new Map<string, ActiveSfxVoice>();
+  private clipVoices = new Map<string, ActiveClipVoice>();
+  private auditionVoice: { source: AudioBufferSourceNode; envelope: GainNode } | null = null;
   private currentAmbientVoice: AmbientVoice | null = null;
   private ambientPack: AmbientPack = 'warm';
   private silentAudio: HTMLAudioElement | null = null;
@@ -177,6 +187,129 @@ class AudioEngine {
       setGain(this.buses[section].mute.gain, muted[section] ? 0 : 1);
     });
     setGain(this.masterGain.gain, faderValueToGain(levels.master));
+  }
+
+  // ---- Song Clips (section 1) --------------------------------------------
+
+  /** Waveform for the clip editor: cached on the library item after the
+   * first computation (section 7: "peaks computed once at import and
+   * cached"). Also returns the song's full duration for the editor. */
+  async getWaveform(libraryId: string): Promise<{ peaks: Float32Array; durationSec: number } | null> {
+    const item = useLibraryStore.getState().items.find((i) => i.id === libraryId);
+    if (!item) return null;
+
+    if (item.peaks && item.peaks.length > 0) {
+      return { peaks: new Float32Array(item.peaks), durationSec: item.durationSec };
+    }
+
+    await this.ensureStarted();
+    const buffer = await decodeLibraryItem(this.ctx!, libraryId);
+    if (!buffer) return null;
+
+    const peaks = computePeaks(buffer);
+    void useLibraryStore.getState().savePeaks(libraryId, peaks);
+    return { peaks, durationSec: buffer.duration };
+  }
+
+  async triggerClipDown(pad: PadAssignment): Promise<void> {
+    if (!pad.libraryId || pad.startSec == null || pad.endSec == null) return;
+    await this.ensureStarted();
+    const ctx = this.ctx!;
+
+    if (this.clipVoices.has(pad.id)) {
+      // Tapping the already-playing pad fades it out over its own length.
+      this.stopClipVoice(pad.id, pad.fadeOutSec ?? 3);
+      return;
+    }
+
+    if (useUIStore.getState().exclusiveClips) {
+      for (const otherId of [...this.clipVoices.keys()]) {
+        this.stopClipVoice(otherId, EXCLUSIVE_CLIP_FADE_SEC);
+      }
+    }
+
+    const buffer = await getTrimmedClipBuffer(ctx, pad.libraryId, pad.startSec, pad.endSec);
+    if (!buffer) return;
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const envelope = ctx.createGain();
+    const peakGain = dbToGain(pad.trimDb ?? 0);
+    const fadeOutSec = Math.min(pad.fadeOutSec ?? 3, buffer.duration);
+    const now = ctx.currentTime;
+    envelope.gain.setValueAtTime(peakGain, now);
+    envelope.gain.setValueAtTime(peakGain, now + Math.max(0, buffer.duration - fadeOutSec));
+    envelope.gain.linearRampToValueAtTime(0, now + buffer.duration);
+
+    source.connect(envelope).connect(this.buses.clips.input);
+    source.start();
+
+    this.clipVoices.set(pad.id, { source, envelope });
+    usePlaybackStore.getState().setClipActive(pad.id, true);
+
+    source.onended = () => {
+      this.clipVoices.delete(pad.id);
+      usePlaybackStore.getState().setClipActive(pad.id, false);
+    };
+  }
+
+  private stopClipVoice(padId: string, fadeSec: number): void {
+    const voice = this.clipVoices.get(padId);
+    if (!voice || !this.ctx) return;
+    const ctx = this.ctx;
+    rampParam(voice.envelope.gain, 0, ctx, fadeSec * 1000);
+    try {
+      voice.source.stop(ctx.currentTime + fadeSec + 0.02);
+    } catch {
+      /* already stopped */
+    }
+    this.clipVoices.delete(padId);
+    usePlaybackStore.getState().setClipActive(padId, false);
+  }
+
+  /** Clip editor preview: plays [startSec, endSec) with the given fade-out,
+   * independent of any pad's own playback state. */
+  async auditionClip(
+    libraryId: string,
+    startSec: number,
+    endSec: number,
+    fadeOutSec: number,
+  ): Promise<void> {
+    await this.ensureStarted();
+    const ctx = this.ctx!;
+    this.stopAudition();
+
+    const buffer = await getTrimmedClipBuffer(ctx, libraryId, startSec, endSec);
+    if (!buffer) return;
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const envelope = ctx.createGain();
+    const fade = Math.min(fadeOutSec, buffer.duration);
+    const now = ctx.currentTime;
+    envelope.gain.setValueAtTime(1, now);
+    envelope.gain.setValueAtTime(1, now + Math.max(0, buffer.duration - fade));
+    envelope.gain.linearRampToValueAtTime(0, now + buffer.duration);
+
+    source.connect(envelope).connect(this.buses.clips.input);
+    source.start();
+    this.auditionVoice = { source, envelope };
+    source.onended = () => {
+      if (this.auditionVoice?.source === source) this.auditionVoice = null;
+    };
+  }
+
+  stopAudition(): void {
+    if (!this.auditionVoice || !this.ctx) return;
+    const { source, envelope } = this.auditionVoice;
+    rampParam(envelope.gain, 0, this.ctx, 30);
+    try {
+      source.stop(this.ctx.currentTime + 0.05);
+    } catch {
+      /* already stopped */
+    }
+    this.auditionVoice = null;
   }
 
   // ---- Sound Effects (section 2) ----------------------------------------
@@ -354,6 +487,8 @@ class AudioEngine {
 
   private stopAllVoices(): void {
     for (const padId of [...this.sfxVoices.keys()]) this.stopSfxVoice(padId, 0.01);
+    for (const padId of [...this.clipVoices.keys()]) this.stopClipVoice(padId, 0.01);
+    this.stopAudition();
     if (this.currentAmbientVoice) {
       this.currentAmbientVoice.dispose();
       this.currentAmbientVoice = null;
