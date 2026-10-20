@@ -1,6 +1,9 @@
 .ambient {
-  flex: 1;
-  min-width: 290px;
+  /* Fixed width, matching the other three sections exactly (same math:
+     3-column grid of 98px pads + fader + padding) now that the keys are
+     the same size as Song Clips/SFX/Background pads. */
+  width: 386px;
+  flex-shrink: 0;
   height: 100%;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
@@ -71,8 +74,8 @@
 
 .ambient__grid {
   display: grid;
-  grid-template-columns: repeat(3, 64px);
-  grid-template-rows: repeat(4, 64px);
+  grid-template-columns: repeat(3, 98px);
+  grid-template-rows: repeat(4, 98px);
   gap: 8px;
   justify-content: center;
 }
@@ -80,13 +83,13 @@
 .ambient__key {
   --glow: 0;
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 98px;
+  height: 98px;
   border-radius: 12px;
   background: var(--tile-bg);
   border: 2px solid var(--tile-border);
   color: color-mix(in srgb, var(--text-primary) calc((1 - var(--glow)) * 100%), #0b1530);
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 700;
   /* No overflow:hidden - let the glow halo bleed outward (see Pad.css for
      the same fix and reasoning). */
@@ -129,14 +132,14 @@
 
 .ambient__key-edit-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 16px;
-  height: 16px;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--text-primary);
   color: #0b1530;
-  font-size: 9px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
