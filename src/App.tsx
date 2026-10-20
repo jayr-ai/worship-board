@@ -50,8 +50,6 @@ function App() {
 
   const activeSfxPadIds = usePlaybackStore((s) => s.activeSfxPadIds);
   const activeClipPadIds = usePlaybackStore((s) => s.activeClipPadIds);
-  const activeAmbientKey = usePlaybackStore((s) => s.activeAmbientKey);
-  const activeAmbientDetail = usePlaybackStore((s) => s.activeAmbientDetail);
   const bgPadId = usePlaybackStore((s) => s.bgPadId);
   const bgPlaying = usePlaybackStore((s) => s.bgPlaying);
   const bgLooping = usePlaybackStore((s) => s.bgLooping);
@@ -328,8 +326,6 @@ function App() {
           onToggleEdit={() => setAmbientEditMode((m) => !m)}
           onKeyEdit={(key) => setEditingAmbientKey(key)}
           customKeyIds={customAmbientKeyIds}
-          activeKey={activeAmbientKey}
-          activeDetail={activeAmbientDetail}
           onKeyPointerDown={(key) => void audioEngine.playAmbientKey(key)}
           onQualityChange={(q) => void setAmbientQuality(q)}
           onPackToggle={() => {

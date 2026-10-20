@@ -157,35 +157,3 @@
   z-index: 1;
 }
 
-.ambient__now-playing {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--tile-bg);
-  border: 1px solid var(--tile-border);
-}
-
-.ambient__now-playing-key {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--mint-a);
-  letter-spacing: 0.03em;
-}
-
-.ambient__now-playing-detail {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
-.ambient__now-playing-idle {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}

@@ -23,8 +23,6 @@ interface AmbientSectionProps {
   onToggleEdit?: () => void;
   onKeyEdit?: (key: string) => void;
   customKeyIds?: Set<string>;
-  activeKey?: string | null;
-  activeDetail?: string | null;
 }
 
 export function AmbientSection({
@@ -46,8 +44,6 @@ export function AmbientSection({
   onToggleEdit,
   onKeyEdit,
   customKeyIds,
-  activeKey = null,
-  activeDetail = null,
 }: AmbientSectionProps) {
   return (
     <section className={`ambient ${faderMuted ? 'ambient--muted' : ''}`}>
@@ -78,17 +74,6 @@ export function AmbientSection({
             onChange={onQualityChange}
             disabled={locked}
           />
-
-          <div className="ambient__now-playing">
-            {activeKey ? (
-              <>
-                <span className="ambient__now-playing-key">{activeKey}</span>
-                <span className="ambient__now-playing-detail">{activeDetail}</span>
-              </>
-            ) : (
-              <span className="ambient__now-playing-idle">— tap a key —</span>
-            )}
-          </div>
 
           <div className="ambient__grid">
             {keys.map((key) => (

@@ -478,21 +478,17 @@ class AudioEngine {
 
     const customPad = useSetStore.getState().current.ambientPads.find((p) => p.id === key);
     let voice: AmbientVoiceLike;
-    let detail: string;
 
     if (customPad?.libraryId) {
       const buffer = await getAmbientCustomBuffer(ctx, customPad.libraryId);
       if (!buffer) {
         useToastStore.getState().push(`Couldn't play "${customPad.label ?? key}" — using the built-in pad instead.`);
         voice = this.buildSynthVoice(ctx, key);
-        detail = useSetStore.getState().current.ambientQuality.toUpperCase();
       } else {
         voice = new CustomAmbientVoice(ctx, buffer, dbToGain(customPad.trimDb ?? 0), this.buses.ambient.input);
-        detail = customPad.label ?? 'Custom';
       }
     } else {
       voice = this.buildSynthVoice(ctx, key);
-      detail = useSetStore.getState().current.ambientQuality.toUpperCase();
     }
 
     const previousKey = activeKey;
@@ -507,7 +503,7 @@ class AudioEngine {
     }
 
     this.ambientVoicesByKey.set(key, voice);
-    usePlaybackStore.getState().setAmbientKey(key, detail);
+    usePlaybackStore.getState().setAmbientKey(key);
   }
 
   private buildSynthVoice(ctx: AudioContext, key: string): AmbientVoice {
