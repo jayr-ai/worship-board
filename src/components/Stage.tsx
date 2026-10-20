@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import './Stage.css';
 
-const STAGE_W = 1180;
+// Song Clips / Sound Effects / Background each grew a 3rd pad column
+// (+106px: 98px pad + 8px gap) per the 10->15 pads-per-bank feature; widen
+// the stage by that amount per section so Ambient's width is unaffected.
+const STAGE_W = 1180 + 3 * 106;
 const STAGE_H = 820;
 
 function useStageScale() {

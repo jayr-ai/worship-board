@@ -74,15 +74,21 @@ describe('v1 -> v2 set migration', () => {
     const db = await import('./db');
     const [migrated] = await db.getAllSets();
 
-    expect(migrated.sfxBankA).toHaveLength(10);
-    expect(migrated.clipsBankA).toHaveLength(10);
-    expect(migrated.clipsBankB).toHaveLength(10);
-    expect(migrated.bgPads).toHaveLength(10);
+    // v1 -> v3 in one jump: the v1 -> v2 step reconstructs 10-pad banks
+    // from the old flat assignments store, then the v2 -> v3 step (below)
+    // immediately grows them to 15.
+    expect(migrated.sfxBankA).toHaveLength(15);
+    expect(migrated.clipsBankA).toHaveLength(15);
+    expect(migrated.clipsBankB).toHaveLength(15);
+    expect(migrated.bgPads).toHaveLength(15);
     expect(migrated.ambientPads).toHaveLength(12);
     expect(migrated.ambientPads.every((p) => p.libraryId === null)).toBe(true);
 
     const untouchedPad = migrated.sfxBankA.find((p) => p.id === 'sfx-a-1');
     expect(untouchedPad).toEqual({ id: 'sfx-a-1', libraryId: null });
+
+    const grownPad = migrated.sfxBankA.find((p) => p.id === 'sfx-a-12');
+    expect(grownPad).toEqual({ id: 'sfx-a-12', libraryId: null });
   });
 
   it('points currentSetId at the migrated set so it loads automatically', async () => {

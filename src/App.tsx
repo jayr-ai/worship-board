@@ -190,7 +190,7 @@ function App() {
           pads={clipsPads}
           activePadIds={activeClipPadIds}
           showProgress
-          width={280}
+          width={386}
           faderValue={levels.clips}
           faderDefault={DEFAULTS.clips}
           faderMuted={muted.clips}
@@ -244,7 +244,7 @@ function App() {
           glowSection="sfx"
           pads={sfxPadsForDisplay}
           activePadIds={activeSfxPadIds}
-          width={280}
+          width={386}
           faderValue={levels.sfx}
           faderDefault={DEFAULTS.sfx}
           faderMuted={muted.sfx}
@@ -285,7 +285,7 @@ function App() {
           pads={bgPadsForDisplay}
           activePadIds={bgPadId ? new Set([bgPadId]) : EMPTY_SET}
           showProgress
-          width={280}
+          width={386}
           faderValue={levels.bg}
           faderDefault={DEFAULTS.bg}
           faderMuted={muted.bg}

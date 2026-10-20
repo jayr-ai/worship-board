@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import type { PadAssignment } from '../types';
 import type { SetData } from '../storage/db';
 import { deleteSet, getAllSets, getAppSetting, putAppSetting, putSet } from '../storage/db';
-import { ambientKeys, createDefaultSetData, createEmptyAmbientPads } from '../data/placeholderData';
+import {
+  ambientKeys,
+  createDefaultSetData,
+  createEmptyAmbientPads,
+  padBankTo,
+} from '../data/placeholderData';
 import { buildBackupZip, restoreBackupZip, shareOrDownloadZip } from '../storage/backup';
 import { useLibraryStore } from './useLibraryStore';
 
@@ -20,11 +25,33 @@ function arrayKeyForPadId(padId: string): ArrayKey | null {
 
 const emptyLike = (pad: PadAssignment): PadAssignment => ({ id: pad.id, libraryId: null });
 
-/** Sets saved before custom Ambient audio existed won't have `ambientPads`
- * yet - fill it in rather than crashing on a missing field. */
+/** Backfills sets saved by an older version of the app: pre-custom-Ambient
+ * sets won't have `ambientPads` yet, and pre-15-pad sets will have only 10
+ * pads in each Clips/SFX/Background bank. Covers both the IndexedDB
+ * migration path and sets coming from an older backup .zip import, which
+ * skips that migration entirely. */
 function normalizeSet(data: SetData): SetData {
-  if (data.ambientPads && data.ambientPads.length === ambientKeys.length) return data;
-  return { ...data, ambientPads: createEmptyAmbientPads() };
+  const ambientPads =
+    data.ambientPads && data.ambientPads.length === ambientKeys.length
+      ? data.ambientPads
+      : createEmptyAmbientPads();
+  const clipsBankA = padBankTo(data.clipsBankA, 'clips-a');
+  const clipsBankB = padBankTo(data.clipsBankB, 'clips-b');
+  const sfxBankA = padBankTo(data.sfxBankA, 'sfx-a');
+  const sfxBankB = padBankTo(data.sfxBankB, 'sfx-b');
+  const bgPads = padBankTo(data.bgPads, 'bg');
+
+  if (
+    ambientPads === data.ambientPads &&
+    clipsBankA === data.clipsBankA &&
+    clipsBankB === data.clipsBankB &&
+    sfxBankA === data.sfxBankA &&
+    sfxBankB === data.sfxBankB &&
+    bgPads === data.bgPads
+  ) {
+    return data;
+  }
+  return { ...data, ambientPads, clipsBankA, clipsBankB, sfxBankA, sfxBankB, bgPads };
 }
 
 interface SetState {

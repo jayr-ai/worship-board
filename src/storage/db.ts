@@ -78,7 +78,22 @@ interface WorshipBoardDB extends DBSchema {
   };
 }
 
-const DB_VERSION = 2;
+const DB_VERSION = 3;
+
+const BANK_SIZE = 15;
+
+/** Grows a saved bank up to BANK_SIZE (section: 10->15 pads-per-bank
+ * feature) instead of leaving older sets stuck with fewer slots. Mirrors
+ * data/placeholderData.ts's padBankTo, but kept separate since the
+ * storage layer shouldn't depend on the app-data layer. */
+function padBank(pads: PadAssignment[], prefix: string): PadAssignment[] {
+  if (pads.length >= BANK_SIZE) return pads;
+  const extra = Array.from({ length: BANK_SIZE - pads.length }, (_, i) => ({
+    id: `${prefix}-${pads.length + i}`,
+    libraryId: null,
+  }));
+  return [...pads, ...extra];
+}
 
 let dbPromise: Promise<IDBPDatabase<WorshipBoardDB>> | null = null;
 
@@ -133,6 +148,23 @@ function getDB(): Promise<IDBPDatabase<WorshipBoardDB>> {
               await tx.objectStore('sets').put(migrated);
               await tx.objectStore('appSettings').put({ key: 'currentSetId', value: migrated.id });
             }
+          }
+        }
+        if (oldVersion < 3) {
+          // Song Clips / Sound Effects / Background grew from 10 to 15
+          // pads per bank - grow every existing set's banks to match
+          // instead of leaving them stuck with the old 5 fewer slots.
+          const setsStore = tx.objectStore('sets');
+          const allSets = await setsStore.getAll();
+          for (const s of allSets) {
+            await setsStore.put({
+              ...s,
+              clipsBankA: padBank(s.clipsBankA, 'clips-a'),
+              clipsBankB: padBank(s.clipsBankB, 'clips-b'),
+              sfxBankA: padBank(s.sfxBankA, 'sfx-a'),
+              sfxBankB: padBank(s.sfxBankB, 'sfx-b'),
+              bgPads: padBank(s.bgPads, 'bg'),
+            });
           }
         }
       },
