@@ -53,6 +53,7 @@ export function FolderChips({
             aria-label={`Delete folder ${folder.name}`}
             onClick={(e) => {
               e.stopPropagation();
+              if (!window.confirm(`Delete folder "${folder.name}"? Its files will be kept, just unfiled.`)) return;
               if (selectedFolderId === folder.id) onSelect(null);
               onDeleteFolder(folder.id);
             }}
