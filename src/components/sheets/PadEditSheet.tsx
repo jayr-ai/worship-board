@@ -1,9 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { PadAssignment, TriggerMode } from '../../types';
 import type { LibraryItem } from '../../storage/db';
 import { PAD_ACCENTS, type PadAccent } from '../Pad';
 import { SegmentedControl } from '../SegmentedControl';
+import { FolderChips } from '../FolderChips';
 import { formatDuration } from '../../utils/formatDuration';
+import { useLibraryStore } from '../../store/useLibraryStore';
 import './Sheet.css';
 import './PadEditSheet.css';
 
@@ -15,7 +17,7 @@ interface PadEditSheetProps {
   library: LibraryItem[];
   onClose: () => void;
   onChooseLibraryItem: (item: LibraryItem) => void;
-  onImportNew: (file: File) => void;
+  onImportNew: (file: File) => Promise<LibraryItem | null>;
   onLabelChange: (label: string) => void;
   onGradientChange: (gradient: PadAccent) => void;
   onModeChange: (mode: TriggerMode) => void;
@@ -48,6 +50,9 @@ export function PadEditSheet({
   clearLabel = 'Clear Pad',
 }: PadEditSheetProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const folders = useLibraryStore((s) => s.folders);
+  const libraryList = library.filter((i) => selectedFolderId === null || i.folderId === selectedFolderId);
 
   return (
     <div className="sheet-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -85,10 +90,14 @@ export function PadEditSheet({
               type="file"
               accept="audio/*"
               className="pad-edit__hidden-input"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const file = e.target.files?.[0];
-                if (file) onImportNew(file);
                 e.target.value = '';
+                if (!file) return;
+                const item = await onImportNew(file);
+                if (item && selectedFolderId) {
+                  void useLibraryStore.getState().moveItemToFolder(item.id, selectedFolderId);
+                }
               }}
             />
 
@@ -97,8 +106,15 @@ export function PadEditSheet({
                 <span className="sheet-field-label pad-edit__library-label">
                   Or choose from Library
                 </span>
+                <FolderChips
+                  folders={folders}
+                  selectedFolderId={selectedFolderId}
+                  onSelect={setSelectedFolderId}
+                  onCreateFolder={(name) => void useLibraryStore.getState().createFolder(name)}
+                  onDeleteFolder={(id) => void useLibraryStore.getState().deleteFolder(id)}
+                />
                 <div className="pad-edit__library-list">
-                  {library.map((item) => (
+                  {libraryList.map((item) => (
                     <button
                       key={item.id}
                       type="button"

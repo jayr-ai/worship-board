@@ -97,4 +97,13 @@ describe('v1 -> v2 set migration', () => {
     const currentSetId = await db.getAppSetting<string>('currentSetId');
     expect(currentSetId).toBe(migrated.id);
   });
+
+  it('creates the folders store (v4) empty, and can store a folder', async () => {
+    const db = await import('./db');
+    expect(await db.getAllFolders()).toEqual([]);
+
+    const folder = { id: 'f1', name: 'Sound Effects', createdAt: Date.now() };
+    await db.putFolder(folder);
+    expect(await db.getAllFolders()).toEqual([folder]);
+  });
 });

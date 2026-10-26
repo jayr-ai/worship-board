@@ -365,17 +365,16 @@ function App() {
               durationSec: item.durationSec,
             })
           }
-          onImportNew={(file) => {
-            void (async () => {
-              const item = await importFileForPad(file);
-              if (item) {
-                await updatePad(editingPad.id, {
-                  libraryId: item.id,
-                  label: item.label,
-                  durationSec: item.durationSec,
-                });
-              }
-            })();
+          onImportNew={async (file) => {
+            const item = await importFileForPad(file);
+            if (item) {
+              await updatePad(editingPad.id, {
+                libraryId: item.id,
+                label: item.label,
+                durationSec: item.durationSec,
+              });
+            }
+            return item;
           }}
           onLabelChange={(label) => void updatePad(editingPad.id, { label })}
           onGradientChange={(gradient) => void updatePad(editingPad.id, { gradient })}
@@ -404,17 +403,16 @@ function App() {
               durationSec: item.durationSec,
             })
           }
-          onImportNew={(file) => {
-            void (async () => {
-              const item = await importFileForPad(file);
-              if (item) {
-                await updatePad(editingAmbientPad.id, {
-                  libraryId: item.id,
-                  label: item.label,
-                  durationSec: item.durationSec,
-                });
-              }
-            })();
+          onImportNew={async (file) => {
+            const item = await importFileForPad(file);
+            if (item) {
+              await updatePad(editingAmbientPad.id, {
+                libraryId: item.id,
+                label: item.label,
+                durationSec: item.durationSec,
+              });
+            }
+            return item;
           }}
           onLabelChange={(label) => void updatePad(editingAmbientPad.id, { label })}
           onGradientChange={() => {}}
@@ -432,7 +430,7 @@ function App() {
           items={library.items}
           importErrors={library.importErrors}
           onClose={() => setLibraryOpen(false)}
-          onImport={(files) => void library.importFiles(files)}
+          onImport={(files) => library.importFiles(files)}
           onRename={(id, label) => void library.renameItem(id, label)}
           onDelete={(id) => void library.deleteItem(id)}
           onDismissErrors={library.dismissImportErrors}

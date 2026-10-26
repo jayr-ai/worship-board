@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import type { LibraryItem } from '../../storage/db';
 import { formatDuration } from '../../utils/formatDuration';
+import { useLibraryStore } from '../../store/useLibraryStore';
+import { FolderChips } from '../FolderChips';
 import './Sheet.css';
 import './LibrarySheet.css';
 
@@ -8,7 +10,7 @@ interface LibrarySheetProps {
   items: LibraryItem[];
   importErrors: { fileName: string; message: string }[];
   onClose: () => void;
-  onImport: (files: FileList) => void;
+  onImport: (files: FileList) => Promise<LibraryItem[]>;
   onRename: (id: string, label: string) => void;
   onDelete: (id: string) => void;
   onDismissErrors: () => void;
@@ -31,7 +33,11 @@ export function LibrarySheet({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draftLabel, setDraftLabel] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
+  const folders = useLibraryStore((s) => s.folders);
+  const moveItemToFolder = useLibraryStore((s) => s.moveItemToFolder);
+  const visibleItems = items.filter((i) => selectedFolderId === null || i.folderId === selectedFolderId);
   const totalBytes = items.reduce((sum, item) => sum + item.blob.size, 0);
 
   const startRename = (item: LibraryItem) => {
@@ -72,12 +78,25 @@ export function LibrarySheet({
               accept="audio/*"
               multiple
               className="pad-edit__hidden-input"
-              onChange={(e) => {
-                if (e.target.files && e.target.files.length > 0) onImport(e.target.files);
+              onChange={async (e) => {
+                const files = e.target.files;
                 e.target.value = '';
+                if (!files || files.length === 0) return;
+                const imported = await onImport(files);
+                if (selectedFolderId) {
+                  for (const item of imported) void moveItemToFolder(item.id, selectedFolderId);
+                }
               }}
             />
           </div>
+
+          <FolderChips
+            folders={folders}
+            selectedFolderId={selectedFolderId}
+            onSelect={setSelectedFolderId}
+            onCreateFolder={(name) => void useLibraryStore.getState().createFolder(name)}
+            onDeleteFolder={(id) => void useLibraryStore.getState().deleteFolder(id)}
+          />
 
           {importErrors.length > 0 && (
             <div className="library__errors">
@@ -93,10 +112,12 @@ export function LibrarySheet({
           )}
 
           <div className="library__list">
-            {items.length === 0 && (
-              <p className="library__empty">No files imported yet.</p>
+            {visibleItems.length === 0 && (
+              <p className="library__empty">
+                {items.length === 0 ? 'No files imported yet.' : 'No files in this folder.'}
+              </p>
             )}
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <div key={item.id} className="library__row">
                 {renamingId === item.id ? (
                   <input
@@ -118,6 +139,19 @@ export function LibrarySheet({
                 )}
                 <span className="library__duration">{formatDuration(item.durationSec)}</span>
                 <span className="library__size">{formatBytes(item.blob.size)}</span>
+                <select
+                  className="library__folder-select"
+                  value={item.folderId ?? ''}
+                  onChange={(e) => void moveItemToFolder(item.id, e.target.value || null)}
+                  aria-label="Move to folder"
+                >
+                  <option value="">No folder</option>
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   className="library__delete"

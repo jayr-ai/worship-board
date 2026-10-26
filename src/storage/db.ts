@@ -21,6 +21,17 @@ export interface LibraryItem {
   peaks?: number[];
   /** Section 1 clip editor: named start/end regions stored on the song. */
   markers?: ClipMarker[];
+  /** Which LibraryFolder this file is filed under; null/absent means
+   * unfiled (shown under "All" everywhere, but not under any folder). */
+  folderId?: string | null;
+}
+
+/** A user-created category for organizing the shared Library - e.g. "Sound
+ * Effects" or "Background Songs". Flat, not nested. */
+export interface LibraryFolder {
+  id: string;
+  name: string;
+  createdAt: number;
 }
 
 /** Section 8: "a set stores everything about a service setup." */
@@ -64,6 +75,10 @@ interface WorshipBoardDB extends DBSchema {
     value: LibraryItem;
     indexes: { hash: string };
   };
+  folders: {
+    key: string;
+    value: LibraryFolder;
+  };
   assignments: {
     key: string;
     value: PadAssignment;
@@ -78,7 +93,7 @@ interface WorshipBoardDB extends DBSchema {
   };
 }
 
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const BANK_SIZE = 15;
 
@@ -167,6 +182,11 @@ function getDB(): Promise<IDBPDatabase<WorshipBoardDB>> {
             });
           }
         }
+        if (oldVersion < 4) {
+          // Library folders feature: existing files just stay unfiled
+          // (folderId is optional/undefined), no backfill needed.
+          db.createObjectStore('folders', { keyPath: 'id' });
+        }
       },
     });
   }
@@ -191,6 +211,21 @@ export async function putLibraryItem(item: LibraryItem): Promise<void> {
 export async function deleteLibraryItem(id: string): Promise<void> {
   const db = await getDB();
   await db.delete('library', id);
+}
+
+export async function getAllFolders(): Promise<LibraryFolder[]> {
+  const db = await getDB();
+  return db.getAll('folders');
+}
+
+export async function putFolder(folder: LibraryFolder): Promise<void> {
+  const db = await getDB();
+  await db.put('folders', folder);
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('folders', id);
 }
 
 export async function getAllSets(): Promise<SetData[]> {

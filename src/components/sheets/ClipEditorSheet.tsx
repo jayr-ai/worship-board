@@ -4,6 +4,7 @@ import type { ClipMarker, LibraryItem } from '../../storage/db';
 import { useLibraryStore } from '../../store/useLibraryStore';
 import { audioEngine } from '../../audio/AudioEngine';
 import { formatDuration } from '../../utils/formatDuration';
+import { FolderChips } from '../FolderChips';
 import './Sheet.css';
 import './ClipEditorSheet.css';
 
@@ -45,13 +46,16 @@ export function ClipEditorSheet({
   const [zoom, setZoom] = useState(20);
   const [auditioning, setAuditioning] = useState(false);
   const [customDraft, setCustomDraft] = useState<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<'start' | 'end' | null>(null);
 
+  const folders = useLibraryStore((s) => s.folders);
   const song = library.find((i) => i.id === songId) ?? null;
+  const songList = library.filter((i) => selectedFolderId === null || i.folderId === selectedFolderId);
 
   useEffect(() => {
     if (!songId) return;
@@ -204,6 +208,13 @@ export function ClipEditorSheet({
             </button>
           </div>
           <div className="sheet-body">
+            <FolderChips
+              folders={folders}
+              selectedFolderId={selectedFolderId}
+              onSelect={setSelectedFolderId}
+              onCreateFolder={(name) => void useLibraryStore.getState().createFolder(name)}
+              onDeleteFolder={(id) => void useLibraryStore.getState().deleteFolder(id)}
+            />
             <button
               type="button"
               className="pad-edit__import-btn"
@@ -221,12 +232,14 @@ export function ClipEditorSheet({
                 e.target.value = '';
                 if (!file) return;
                 const item = await onImportNew(file);
-                if (item) setSongId(item.id);
+                if (!item) return;
+                if (selectedFolderId) void useLibraryStore.getState().moveItemToFolder(item.id, selectedFolderId);
+                setSongId(item.id);
               }}
             />
-            {library.length > 0 && (
+            {songList.length > 0 && (
               <div className="pad-edit__library-list clip-editor__song-list">
-                {library.map((item) => (
+                {songList.map((item) => (
                   <button
                     key={item.id}
                     type="button"

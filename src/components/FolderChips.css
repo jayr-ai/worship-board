@@ -1,0 +1,56 @@
+.folder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.folder-chips__chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.folder-chips__chip--active {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.folder-chips__chip--add {
+  border-style: dashed;
+}
+
+.folder-chips__delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.folder-chips__delete:hover {
+  background: var(--coral-a);
+  color: #0b1530;
+}
+
+.folder-chips__input {
+  height: 32px;
+  width: 120px;
+  border-radius: 8px;
+  background: var(--tile-bg);
+  border: 1px solid var(--accent-primary);
+  color: var(--text-primary);
+  padding: 0 8px;
+  font-size: 12px;
+}
