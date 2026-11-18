@@ -1,49 +1,50 @@
 :root {
-  /* "Vault" theme - a near-black violet chrome inspired by a glowing
-     hexagon-grid reference, with the original jewel-tone section/pad
-     accents (gold/coral/sky/mint/violet/rose) kept as-is so each section
-     and pad color stays instantly recognizable during a live set. */
-  --stage-bg: #0a0817;
-  --panel-bg: #120e24;
-  --panel-border: #2b2152;
-  --tile-bg: #1a1430;
-  --tile-border: #332a5c;
-  --tile-border-alt: #443870;
-  --text-primary: #f2eefb;
-  --text-muted: #a89cd4;
-  --text-secondary: #d2c8f0;
-  --accent-primary: #a78bfa;
-  --accent-primary-rgb: 167, 139, 250;
+  /* "Luminous" theme - a neutral near-black chassis (like hardware, not a
+     gradient-heavy AI-generated UI) with vivid, flat, high-saturation pad
+     colors inspired by a Novation Launchpad's glowing RGB pads. Same
+     section/pad accent slots as before (gold/coral/sky/mint/violet/rose),
+     just swapped from soft pastel gradients to true neon. */
+  --stage-bg: #0a0a0a;
+  --panel-bg: #141414;
+  --panel-border: #2e2e2e;
+  --tile-bg: #1c1c1c;
+  --tile-border: #343434;
+  --tile-border-alt: #4a4a4a;
+  --text-primary: #f5f5f5;
+  --text-muted: #999999;
+  --text-secondary: #d6d6d6;
+  --accent-primary: #ff4713;
+  --accent-primary-rgb: 255, 71, 19;
 
-  --gold-hi: #ffe899;
-  --gold-a: #f2c94c;
-  --gold-b: #c98a1e;
-  --gold-rgb: 228, 185, 60;
+  --gold-hi: #f5ffb0;
+  --gold-a: #e8ff1a;
+  --gold-b: #b8cc00;
+  --gold-rgb: 232, 255, 26;
 
-  --coral-hi: #ffb5a5;
-  --coral-a: #ff8a73;
-  --coral-b: #e25a6e;
-  --coral-rgb: 255, 138, 115;
+  --coral-hi: #ffb37a;
+  --coral-a: #ff6a00;
+  --coral-b: #cc4e00;
+  --coral-rgb: 255, 106, 0;
 
-  --sky-hi: #bfe0ff;
-  --sky-a: #78bbff;
-  --sky-b: #4a8ae6;
-  --sky-rgb: 120, 187, 255;
+  --sky-hi: #9dc4ff;
+  --sky-a: #2b7fff;
+  --sky-b: #1a53cc;
+  --sky-rgb: 43, 127, 255;
 
-  --mint-hi: #c4f5e3;
-  --mint-a: #7fddbb;
-  --mint-b: #35a98a;
-  --mint-rgb: 127, 221, 187;
+  --mint-hi: #9dffea;
+  --mint-a: #00e6b8;
+  --mint-b: #00a884;
+  --mint-rgb: 0, 230, 184;
 
-  --violet-hi: #d9c9ff;
-  --violet-a: #a47eff;
-  --violet-b: #6b3fd1;
-  --violet-rgb: 164, 126, 255;
+  --violet-hi: #dca8ff;
+  --violet-a: #a822ff;
+  --violet-b: #7a0fcc;
+  --violet-rgb: 168, 34, 255;
 
-  --rose-hi: #ffd0e0;
-  --rose-a: #ff7fae;
-  --rose-b: #d63f78;
-  --rose-rgb: 255, 127, 174;
+  --rose-hi: #ff9dd3;
+  --rose-a: #ff1f99;
+  --rose-b: #cc0f73;
+  --rose-rgb: 255, 31, 153;
 
   --stage-w: 1594px;
   --stage-h: 820px;
