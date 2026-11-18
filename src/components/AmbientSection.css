@@ -88,23 +88,13 @@
   position: relative;
   width: 98px;
   height: 98px;
-  border-radius: 12px;
-  background: radial-gradient(
-    circle at 50% 50%,
-    #ffffff 0%,
-    var(--mint-hi) 20%,
-    var(--mint-a) 55%,
-    var(--mint-b) 100%
-  );
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  box-shadow:
-    0 0 18px 3px rgba(var(--mint-rgb), 0.65),
-    inset 0 0 14px rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  background: radial-gradient(circle at 50% 50%, var(--mint-hi) 0%, var(--mint-a) 55%, var(--mint-b) 100%);
+  border: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
   color: var(--pad-text);
   font-size: 32px;
   font-weight: 700;
-  /* No overflow:hidden - let the glow halo bleed outward (see Pad.css for
-     the same fix and reasoning). */
 }
 
 .ambient__key::after {

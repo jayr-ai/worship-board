@@ -5,12 +5,8 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 10px;
-  border-radius: 12px;
+  border-radius: 20px;
   border: none;
-  /* No overflow:hidden here on purpose - a lit pad's resting glow
-     (box-shadow, see .pad--assigned below) is meant to bleed out over
-     neighboring pads. Clipping it to the pad's own box was quietly
-     muting the effect. */
   font-family: 'Barlow', sans-serif;
 }
 
@@ -58,21 +54,18 @@
   align-items: center;
 }
 
-/* Assigned pads are lit by default (like a loaded Launchpad Pro pad under
-   its own backlight) rather than looking "on" only while playing: one
-   radial gradient lights each pad from its own center outward (white core
-   -> hi -> a -> b at the corners), the same way a real RGB pad's LED
-   glows brightest in the middle and falls off toward the edges. Text/chip
-   color tracks --glow via --pad-text so it stays legible once the pad
-   dims (see ::after below). */
+/* Assigned pads are lit by default: a flat rounded-icon look shaded with
+   one radial gradient per pad (lighter tint at its own center, fading to
+   the deeper/darker tone at the corners) plus a soft drop shadow for
+   depth - no white core and no outer glow bloom. Text/chip color tracks
+   --glow via --pad-text so it stays legible once the pad dims (see
+   ::after below). */
 .pad--assigned {
   --glow: 0;
   --pad-text: color-mix(in srgb, #0a0a0a calc((1 - var(--glow)) * 100%), var(--text-primary));
-  background: radial-gradient(circle at 50% 50%, #ffffff 0%, var(--hi) 20%, var(--a) 55%, var(--b) 100%);
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  box-shadow:
-    0 0 18px 3px rgba(var(--rgb), 0.65),
-    inset 0 0 14px rgba(255, 255, 255, 0.18);
+  background: radial-gradient(circle at 50% 50%, var(--hi) 0%, var(--a) 55%, var(--b) 100%);
+  border: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
   color: var(--pad-text);
 }
 
