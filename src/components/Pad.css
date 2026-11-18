@@ -7,10 +7,10 @@
   padding: 10px;
   border-radius: 12px;
   border: none;
-  /* No overflow:hidden here on purpose - the active glow's box-shadow (see
-     ::after below) is meant to bleed out over neighboring pads per the
-     spec ("z-index: 2 so the glow sits above neighboring pads"). Clipping
-     it to the pad's own box was quietly muting the effect. */
+  /* No overflow:hidden here on purpose - a lit pad's resting glow
+     (box-shadow, see .pad--assigned below) is meant to bleed out over
+     neighboring pads. Clipping it to the pad's own box was quietly
+     muting the effect. */
   font-family: 'Barlow', sans-serif;
 }
 
@@ -58,30 +58,36 @@
   align-items: center;
 }
 
+/* Assigned pads are lit by default (like a loaded Launchpad pad sitting
+   under its own backlight) rather than looking "on" only while playing: a
+   glossy highlight blob plus a resting glow halo around the pad. Text/chip
+   color tracks --glow via --pad-text so it stays legible once the pad
+   dims (see ::after below). */
 .pad--assigned {
   --glow: 0;
-  background: linear-gradient(145deg, var(--a), var(--b));
-  border: 2px solid rgba(255, 255, 255, 0.22);
-  color: #0b1530;
+  --pad-text: color-mix(in srgb, #0a0a0a calc((1 - var(--glow)) * 100%), var(--text-primary));
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(145deg, var(--hi) 0%, var(--a) 45%, var(--b) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 0 18px 3px rgba(var(--rgb), 0.65),
+    inset 0 0 14px rgba(255, 255, 255, 0.18);
+  color: var(--pad-text);
 }
 
-/* The active look is a separate overlay layer whose opacity is driven by
-   --glow (set from JS via refs in a rAF loop, never React state - see
-   src/audio/glowEngine.ts). This lets the glow pulse and fade in sync with
-   the real gain envelope without ever animating box-shadow directly. */
+/* Instead of brightening further on top of an already-lit pad, the "this
+   one is playing" signal is a dark overlay that fades IN as --glow rises
+   (set from JS via refs in a rAF loop, never React state - see
+   src/audio/glowEngine.ts) - the pad visibly dims while it sounds, then
+   relights back to full brightness once it stops. */
 .pad--assigned::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(145deg, #ffffff 0%, var(--hi) 45%, var(--a) 100%);
-  border: 2px solid #ffffff;
-  box-shadow:
-    0 0 0 2px var(--hi),
-    0 0 16px 5px var(--a),
-    0 0 40px 14px rgba(var(--rgb), 0.7),
-    inset 0 0 20px rgba(255, 255, 255, 0.6);
-  opacity: var(--glow);
+  background: #000;
+  opacity: calc(var(--glow) * 0.6);
   pointer-events: none;
   z-index: 0;
 }
@@ -113,7 +119,7 @@
   font-weight: 700;
   line-height: 1.1;
   text-align: left;
-  color: #0b1530;
+  color: var(--pad-text, #0b1530);
 }
 
 .pad__footer {
@@ -128,15 +134,15 @@
 .pad__chip {
   font-size: 10px;
   font-weight: 700;
-  border: 1px solid rgba(10, 10, 10, 0.4);
+  border: 1px solid var(--pad-text, #0b1530);
   border-radius: 4px;
   padding: 1px 4px;
-  color: #0b1530;
+  color: var(--pad-text, #0b1530);
 }
 
 .pad__duration {
   font-size: 11px;
-  color: #0b1530;
+  color: var(--pad-text, #0b1530);
 }
 
 .pad__progress {
@@ -145,7 +151,7 @@
   left: 0;
   height: 4px;
   width: 40%;
-  background: #0b1530;
+  background: var(--pad-text, #0b1530);
   z-index: 1;
 }
 

@@ -80,35 +80,36 @@
   justify-content: center;
 }
 
+/* Same "lit by default, dims while playing" treatment as Pad.css's
+   .pad--assigned/::after - see there for the full reasoning. */
 .ambient__key {
   --glow: 0;
+  --pad-text: color-mix(in srgb, #0a0a0a calc((1 - var(--glow)) * 100%), var(--text-primary));
   position: relative;
   width: 98px;
   height: 98px;
   border-radius: 12px;
-  background: var(--tile-bg);
-  border: 2px solid var(--tile-border);
-  color: color-mix(in srgb, var(--text-primary) calc((1 - var(--glow)) * 100%), #0b1530);
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(145deg, var(--mint-hi) 0%, var(--mint-a) 55%, var(--mint-b) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 0 18px 3px rgba(var(--mint-rgb), 0.65),
+    inset 0 0 14px rgba(255, 255, 255, 0.18);
+  color: var(--pad-text);
   font-size: 32px;
   font-weight: 700;
   /* No overflow:hidden - let the glow halo bleed outward (see Pad.css for
      the same fix and reasoning). */
 }
 
-/* Same JS-driven overlay pattern as Pad.css (see glowEngine.ts). */
 .ambient__key::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(145deg, #ffffff 0%, var(--mint-hi) 45%, var(--mint-a) 100%);
-  border: 2px solid #ffffff;
-  box-shadow:
-    0 0 0 2px var(--mint-hi),
-    0 0 16px 5px var(--mint-a),
-    0 0 40px 14px rgba(var(--mint-rgb), 0.7),
-    inset 0 0 20px rgba(255, 255, 255, 0.6);
-  opacity: var(--glow);
+  background: #000;
+  opacity: calc(var(--glow) * 0.6);
   pointer-events: none;
   z-index: -1;
 }
@@ -153,7 +154,9 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--mint-a);
+  /* Tracks the key's own text color, not --mint-a - the key's resting
+     background is mint too now, so a mint dot would disappear into it. */
+  background: var(--pad-text);
   z-index: 1;
 }
 
