@@ -5,21 +5,24 @@ import { create } from 'zustand';
 interface PlaybackState {
   activeSfxPadIds: Set<string>;
   activeClipPadIds: Set<string>;
-  activeAmbientKey: string | null;
   bgPadId: string | null;
   bgPlaying: boolean;
   bgLooping: boolean;
-  bgShuffle: boolean;
+  ambientSongId: string | null;
+  ambientSongPlaying: boolean;
+  ambientSongLooping: boolean;
+  ambientSongShuffle: boolean;
   audioUnlocked: boolean;
   needsTapToResume: boolean;
   wakeLockUnsupported: boolean;
 
   setSfxActive: (padId: string, active: boolean) => void;
   setClipActive: (padId: string, active: boolean) => void;
-  setAmbientKey: (key: string | null) => void;
   setBackground: (padId: string | null, playing: boolean) => void;
   setBgLooping: (looping: boolean) => void;
-  setBgShuffle: (shuffle: boolean) => void;
+  setAmbientSong: (padId: string | null, playing: boolean) => void;
+  setAmbientSongLooping: (looping: boolean) => void;
+  setAmbientSongShuffle: (shuffle: boolean) => void;
   setAudioUnlocked: (unlocked: boolean) => void;
   setNeedsTapToResume: (needs: boolean) => void;
   setWakeLockUnsupported: (unsupported: boolean) => void;
@@ -28,11 +31,13 @@ interface PlaybackState {
 export const usePlaybackStore = create<PlaybackState>((set) => ({
   activeSfxPadIds: new Set(),
   activeClipPadIds: new Set(),
-  activeAmbientKey: null,
   bgPadId: null,
   bgPlaying: false,
   bgLooping: false,
-  bgShuffle: false,
+  ambientSongId: null,
+  ambientSongPlaying: false,
+  ambientSongLooping: false,
+  ambientSongShuffle: false,
   audioUnlocked: false,
   needsTapToResume: false,
   wakeLockUnsupported: false,
@@ -51,10 +56,11 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       else next.delete(padId);
       return { activeClipPadIds: next };
     }),
-  setAmbientKey: (key) => set({ activeAmbientKey: key }),
   setBackground: (padId, playing) => set({ bgPadId: padId, bgPlaying: playing }),
   setBgLooping: (looping) => set({ bgLooping: looping }),
-  setBgShuffle: (shuffle) => set({ bgShuffle: shuffle }),
+  setAmbientSong: (padId, playing) => set({ ambientSongId: padId, ambientSongPlaying: playing }),
+  setAmbientSongLooping: (looping) => set({ ambientSongLooping: looping }),
+  setAmbientSongShuffle: (shuffle) => set({ ambientSongShuffle: shuffle }),
   setAudioUnlocked: (unlocked) => set({ audioUnlocked: unlocked }),
   setNeedsTapToResume: (needs) => set({ needsTapToResume: needs }),
   setWakeLockUnsupported: (unsupported) => set({ wakeLockUnsupported: unsupported }),

@@ -11,7 +11,7 @@ import {
 import { buildBackupZip, restoreBackupZip, shareOrDownloadZip } from '../storage/backup';
 import { useLibraryStore } from './useLibraryStore';
 
-type ArrayKey = 'clipsBankA' | 'clipsBankB' | 'sfxBankA' | 'sfxBankB' | 'bgPads' | 'ambientPads';
+type ArrayKey = 'clipsBankA' | 'clipsBankB' | 'sfxBankA' | 'sfxBankB' | 'bgPads';
 
 function arrayKeyForPadId(padId: string): ArrayKey | null {
   if (padId.startsWith('clips-a-')) return 'clipsBankA';
@@ -19,7 +19,6 @@ function arrayKeyForPadId(padId: string): ArrayKey | null {
   if (padId.startsWith('sfx-a-')) return 'sfxBankA';
   if (padId.startsWith('sfx-b-')) return 'sfxBankB';
   if (padId.startsWith('bg-')) return 'bgPads';
-  if ((ambientKeys as string[]).includes(padId)) return 'ambientPads';
   return null;
 }
 
@@ -40,6 +39,7 @@ function normalizeSet(data: SetData): SetData {
   const sfxBankA = padBankTo(data.sfxBankA, 'sfx-a');
   const sfxBankB = padBankTo(data.sfxBankB, 'sfx-b');
   const bgPads = padBankTo(data.bgPads, 'bg');
+  const ambientSongFolderId = data.ambientSongFolderId ?? null;
 
   if (
     ambientPads === data.ambientPads &&
@@ -47,11 +47,12 @@ function normalizeSet(data: SetData): SetData {
     clipsBankB === data.clipsBankB &&
     sfxBankA === data.sfxBankA &&
     sfxBankB === data.sfxBankB &&
-    bgPads === data.bgPads
+    bgPads === data.bgPads &&
+    ambientSongFolderId === data.ambientSongFolderId
   ) {
     return data;
   }
-  return { ...data, ambientPads, clipsBankA, clipsBankB, sfxBankA, sfxBankB, bgPads };
+  return { ...data, ambientPads, clipsBankA, clipsBankB, sfxBankA, sfxBankB, bgPads, ambientSongFolderId };
 }
 
 interface SetState {
@@ -70,8 +71,7 @@ interface SetState {
   clearPad: (padId: string) => Promise<void>;
   setLevel: (section: keyof SetData['levels'], value: number) => Promise<void>;
   toggleMute: (section: keyof SetData['muted']) => Promise<void>;
-  setAmbientQuality: (quality: SetData['ambientQuality']) => Promise<void>;
-  setAmbientPack: (pack: SetData['ambientPack']) => Promise<void>;
+  setAmbientSongFolder: (folderId: string | null) => Promise<void>;
   toggleExclusiveClips: () => Promise<void>;
   cycleDefaultClipFadeOut: () => Promise<void>;
 
@@ -209,14 +209,8 @@ export const useSetStore = create<SetState>((set, get) => ({
     set({ current: updated });
   },
 
-  setAmbientQuality: async (quality) => {
-    const updated = { ...get().current, ambientQuality: quality };
-    await persist(updated);
-    set({ current: updated });
-  },
-
-  setAmbientPack: async (pack) => {
-    const updated = { ...get().current, ambientPack: pack };
+  setAmbientSongFolder: async (folderId) => {
+    const updated = { ...get().current, ambientSongFolderId: folderId };
     await persist(updated);
     set({ current: updated });
   },

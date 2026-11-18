@@ -8,6 +8,9 @@ interface FolderChipsProps {
   onSelect: (folderId: string | null) => void;
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (folderId: string) => void;
+  /** False hides the "All" chip, for a picker that must scope to exactly
+   * one folder (e.g. Ambient Pads) rather than default to "everything". */
+  showAll?: boolean;
 }
 
 /** Shared folder filter/organize row: an "All" chip, one chip per folder,
@@ -20,6 +23,7 @@ export function FolderChips({
   onSelect,
   onCreateFolder,
   onDeleteFolder,
+  showAll = true,
 }: FolderChipsProps) {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState('');
@@ -32,13 +36,15 @@ export function FolderChips({
 
   return (
     <div className="folder-chips">
-      <button
-        type="button"
-        className={`folder-chips__chip ${selectedFolderId === null ? 'folder-chips__chip--active' : ''}`}
-        onClick={() => onSelect(null)}
-      >
-        All
-      </button>
+      {showAll && (
+        <button
+          type="button"
+          className={`folder-chips__chip ${selectedFolderId === null ? 'folder-chips__chip--active' : ''}`}
+          onClick={() => onSelect(null)}
+        >
+          All
+        </button>
+      )}
       {folders.map((folder) => (
         <button
           key={folder.id}

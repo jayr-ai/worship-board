@@ -1,0 +1,35 @@
+.transport {
+  display: flex;
+  gap: 8px;
+}
+
+.transport__play {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--sky-a);
+  border: none;
+  color: #0b1530;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+.transport__btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-secondary);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transport__btn--active {
+  background: var(--sky-a);
+  color: #0b1530;
+  border-color: var(--sky-a);
+}

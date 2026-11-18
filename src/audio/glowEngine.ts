@@ -8,7 +8,7 @@ import type { TriggerMode } from '../types';
 import { audioEngine } from './AudioEngine';
 import { FLASH_TOTAL_MS, flashFactor, pulseFactor } from './glowMath';
 
-export type GlowSection = 'clips' | 'sfx' | 'bg' | 'ambient';
+export type GlowSection = 'clips' | 'sfx' | 'bg';
 
 interface RegistryEntry {
   el: HTMLElement;
@@ -73,9 +73,6 @@ class GlowEngine {
         }
       } else if (entry.section === 'bg') {
         const level = audioEngine.getBackgroundLevel(glowId);
-        value = pulseEnabled ? level * pulse : level;
-      } else if (entry.section === 'ambient') {
-        const level = audioEngine.getAmbientKeyLevel(glowId);
         value = pulseEnabled ? level * pulse : level;
       }
 

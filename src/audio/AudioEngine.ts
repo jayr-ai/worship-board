@@ -3,11 +3,7 @@ import { useUIStore } from '../store/useUIStore';
 import { usePlaybackStore } from '../store/usePlaybackStore';
 import { faderValueToGain, dbToGain } from './taper';
 import { rampParam } from './ramp';
-import { createReverbImpulse } from './reverbImpulse';
 import { getSfxAudioBuffer } from './sfxBuffers';
-import { AmbientVoice, type AmbientPack, type AmbientVoiceLike } from './ambientSynth';
-import { CustomAmbientVoice } from './ambientCustomVoice';
-import { getAmbientCustomBuffer } from './ambientBuffers';
 import { WakeLockManager } from './wakeLock';
 import { createSilentAudioElement } from './silentAudio';
 import { BackgroundEngine } from './BackgroundEngine';
@@ -22,8 +18,6 @@ import { useToastStore } from '../store/useToastStore';
 
 const FADE_ALL_SEC = 3;
 const STOP_ALL_MS = 80;
-const AMBIENT_FADE_OUT_SEC = 4;
-const AMBIENT_CROSSFADE_SEC = 2;
 const EXCLUSIVE_CLIP_FADE_SEC = 0.8;
 const RAMP_MS = 8;
 const AUTO_DUCK_AMOUNT_DB = -6;
@@ -58,17 +52,20 @@ class AudioEngine {
   private masterGain!: GainNode;
   private limiter!: DynamicsCompressorNode;
   private buses!: Record<SectionId, Bus>;
-  private reverbConvolver!: ConvolverNode;
   private sfxVoices = new Map<string, ActiveSfxVoice>();
   private clipVoices = new Map<string, ActiveClipVoice>();
   private auditionVoice: { source: AudioBufferSourceNode; envelope: GainNode } | null = null;
-  private ambientVoicesByKey = new Map<string, AmbientVoiceLike>();
-  private ambientPack: AmbientPack = 'warm';
   private silentAudio: HTMLAudioElement | null = null;
   private wakeLock = new WakeLockManager();
   private globalUnlockBound = false;
   private background: BackgroundEngine | null = null;
   private bgObjectUrls = new Map<string, string>();
+  /** Ambient Pads is now a second, independently-navigable song player
+   * (same engine class as Background), scoped to whichever Library folder
+   * the user picks - see getAmbientPlaylist. */
+  private ambientPlayer: BackgroundEngine | null = null;
+  private ambientObjectUrls = new Map<string, string>();
+  private ambientShuffleOrder: string[] | null = null;
   private duckReleaseTimer: number | null = null;
 
   bindGlobalUnlock(): void {
@@ -149,12 +146,18 @@ class AudioEngine {
       ambient: this.createBus(ctx, true),
     };
 
-    this.reverbConvolver = ctx.createConvolver();
-    this.reverbConvolver.buffer = createReverbImpulse(ctx);
-    this.reverbConvolver.connect(this.buses.ambient.input);
-
-    this.background = new BackgroundEngine(ctx, this.buses.bg.input, (endedId) =>
-      void this.nextBackgroundSong(endedId),
+    this.background = new BackgroundEngine(
+      ctx,
+      this.buses.bg.input,
+      (padId, playing) => usePlaybackStore.getState().setBackground(padId, playing),
+      (looping) => usePlaybackStore.getState().setBgLooping(looping),
+    );
+    this.ambientPlayer = new BackgroundEngine(
+      ctx,
+      this.buses.ambient.input,
+      (padId, playing) => usePlaybackStore.getState().setAmbientSong(padId, playing),
+      (looping) => usePlaybackStore.getState().setAmbientSongLooping(looping),
+      (endedId) => void this.nextAmbientSong(endedId),
     );
   }
 
@@ -218,10 +221,6 @@ class AudioEngine {
     const voice = this.sfxVoices.get(padId);
     if (!voice) return 0;
     return Math.min(1, voice.envelope.gain.value / voice.peakGain);
-  }
-
-  getAmbientKeyLevel(key: string): number {
-    return this.ambientVoicesByKey.get(key)?.getLevel() ?? 0;
   }
 
   getBackgroundLevel(padId: string): number {
@@ -464,117 +463,113 @@ class AudioEngine {
     }
   }
 
-  // ---- Ambient Pads (section 4) ------------------------------------------
+  // ---- Ambient Pads (section 4): a song player like Background, but
+  // scoped to whichever Library folder the user has picked for it (see
+  // useSetStore's ambientSongFolderId) instead of the whole Library. -------
 
-  async playAmbientKey(key: string): Promise<void> {
-    await this.ensureStarted();
-    const ctx = this.ctx!;
-    const activeKey = usePlaybackStore.getState().activeAmbientKey;
-
-    if (activeKey === key && this.ambientVoicesByKey.has(key)) {
-      const voice = this.ambientVoicesByKey.get(key)!;
-      voice.release();
-      this.scheduleAmbientRemoval(key, voice, voice.releaseSec);
-      usePlaybackStore.getState().setAmbientKey(null);
-      return;
-    }
-
-    const customPad = useSetStore.getState().current.ambientPads.find((p) => p.id === key);
-    let voice: AmbientVoiceLike;
-
-    if (customPad?.libraryId) {
-      const buffer = await getAmbientCustomBuffer(ctx, customPad.libraryId);
-      if (!buffer) {
-        useToastStore.getState().push(`Couldn't play "${customPad.label ?? key}" — using the built-in pad instead.`);
-        voice = this.buildSynthVoice(ctx, key);
-      } else {
-        voice = new CustomAmbientVoice(ctx, buffer, dbToGain(customPad.trimDb ?? 0), this.buses.ambient.input);
-      }
-    } else {
-      voice = this.buildSynthVoice(ctx, key);
-    }
-
-    const previousKey = activeKey;
-    const previousVoice = previousKey ? this.ambientVoicesByKey.get(previousKey) : undefined;
-
-    if (previousVoice && previousKey) {
-      previousVoice.release(AMBIENT_CROSSFADE_SEC);
-      this.scheduleAmbientRemoval(previousKey, previousVoice, AMBIENT_CROSSFADE_SEC);
-      voice.attack(AMBIENT_CROSSFADE_SEC);
-    } else {
-      voice.attack();
-    }
-
-    this.ambientVoicesByKey.set(key, voice);
-    usePlaybackStore.getState().setAmbientKey(key);
-  }
-
-  private buildSynthVoice(ctx: AudioContext, key: string): AmbientVoice {
-    const quality = useSetStore.getState().current.ambientQuality;
-    return new AmbientVoice(ctx, key, quality, this.ambientPack, this.buses.ambient.input, this.reverbConvolver);
-  }
-
-  private scheduleAmbientRemoval(key: string, voice: AmbientVoiceLike, durationSec: number): void {
-    window.setTimeout(() => {
-      if (this.ambientVoicesByKey.get(key) === voice) this.ambientVoicesByKey.delete(key);
-    }, durationSec * 1000 + 150);
-  }
-
-  fadeOutAmbient(): void {
-    const key = usePlaybackStore.getState().activeAmbientKey;
-    if (!key) return;
-    const voice = this.ambientVoicesByKey.get(key);
-    if (!voice) return;
-    voice.release(AMBIENT_FADE_OUT_SEC);
-    this.scheduleAmbientRemoval(key, voice, AMBIENT_FADE_OUT_SEC);
-    usePlaybackStore.getState().setAmbientKey(null);
-  }
-
-  setAmbientPack(pack: AmbientPack): void {
-    this.ambientPack = pack;
-  }
-
-  // ---- Background (section 3): a library-wide playlist, not fixed pad
-  // slots - every imported song shows up and plays straight from the
-  // Library, sorted alphabetically (or shuffled - see bgShuffleOrder). ----
-
-  private bgShuffleOrder: string[] | null = null;
-
-  private blobUrlForLibraryId(libraryId: string): string | null {
-    const cached = this.bgObjectUrls.get(libraryId);
+  private blobUrlForAmbientSong(libraryId: string): string | null {
+    const cached = this.ambientObjectUrls.get(libraryId);
     if (cached) return cached;
     const item = useLibraryStore.getState().items.find((i) => i.id === libraryId);
     if (!item) return null;
     const url = URL.createObjectURL(item.blob);
-    this.bgObjectUrls.set(libraryId, url);
+    this.ambientObjectUrls.set(libraryId, url);
     return url;
   }
 
-  /** The current playlist order: alphabetical, or a shuffled order that's
-   * re-rolled each time shuffle is turned on (see toggleBackgroundShuffle). */
-  private getBgPlaylist(): { id: string; label: string }[] {
-    const items = useLibraryStore.getState().items;
+  /** Alphabetical order of whatever's filed in the chosen folder, or a
+   * shuffled order re-rolled each time shuffle is turned on. Empty until a
+   * folder is actually picked (see AmbientPlayer's empty state). */
+  private getAmbientPlaylist(): { id: string; label: string }[] {
+    const folderId = useSetStore.getState().current.ambientSongFolderId;
+    if (!folderId) return [];
+    const items = useLibraryStore.getState().items.filter((i) => i.folderId === folderId);
     const sorted = [...items].sort((a, b) => a.label.localeCompare(b.label));
-    if (!usePlaybackStore.getState().bgShuffle) return sorted;
-    if (!this.bgShuffleOrder) this.bgShuffleOrder = shuffleIds(sorted.map((i) => i.id));
+    if (!usePlaybackStore.getState().ambientSongShuffle) return sorted;
+    if (!this.ambientShuffleOrder) this.ambientShuffleOrder = shuffleIds(sorted.map((i) => i.id));
     const byId = new Map(sorted.map((i) => [i.id, i]));
-    return this.bgShuffleOrder.map((id) => byId.get(id)).filter((i): i is (typeof sorted)[number] => !!i);
+    return this.ambientShuffleOrder.map((id) => byId.get(id)).filter((i): i is (typeof sorted)[number] => !!i);
   }
 
-  async playBackgroundSong(libraryId: string, forceRestart = false): Promise<void> {
+  async playAmbientSong(libraryId: string, forceRestart = false): Promise<void> {
     await this.ensureStarted();
     const item = useLibraryStore.getState().items.find((i) => i.id === libraryId);
-    const url = this.blobUrlForLibraryId(libraryId);
+    const url = this.blobUrlForAmbientSong(libraryId);
     if (!url) {
       useToastStore.getState().push(`Couldn't find "${item?.label ?? 'that song'}" in the library.`);
       return;
     }
-    const looping = usePlaybackStore.getState().bgLooping;
+    const looping = usePlaybackStore.getState().ambientSongLooping;
     const pad: PadAssignment = { id: libraryId, libraryId, tag: looping ? 'LOOP' : 'ONCE' };
     try {
-      await this.background!.playPad(pad, url, 1, 4, forceRestart);
+      await this.ambientPlayer!.playPad(pad, url, 1, 4, forceRestart);
     } catch {
       useToastStore.getState().push(`Couldn't play "${item?.label ?? 'that song'}" — the file may be unsupported.`);
+    }
+  }
+
+  toggleAmbientSongPlayPause(): void {
+    this.ambientPlayer?.togglePlayPause();
+  }
+
+  toggleAmbientSongLoop(): void {
+    this.ambientPlayer?.toggleLoop();
+  }
+
+  toggleAmbientSongShuffle(): void {
+    const next = !usePlaybackStore.getState().ambientSongShuffle;
+    usePlaybackStore.getState().setAmbientSongShuffle(next);
+    this.ambientShuffleOrder = next
+      ? shuffleIds(this.getAmbientPlaylist().map((i) => i.id))
+      : null;
+  }
+
+  /** Plays the song after `afterId` (defaults to whatever's currently
+   * playing) in the current playlist order. Used by the Next button and by
+   * the ambient BackgroundEngine's onEnded hook for auto-advance. */
+  async nextAmbientSong(afterId?: string): Promise<void> {
+    const playlist = this.getAmbientPlaylist();
+    if (playlist.length === 0) return;
+    const currentId = afterId ?? this.ambientPlayer?.playingPadId ?? null;
+    const currentIndex = playlist.findIndex((i) => i.id === currentId);
+    const next = playlist[(currentIndex + 1) % playlist.length];
+    await this.playAmbientSong(next.id, true);
+  }
+
+  async previousAmbientSong(): Promise<void> {
+    const playlist = this.getAmbientPlaylist();
+    if (playlist.length === 0) return;
+    const currentId = this.ambientPlayer?.playingPadId ?? null;
+    const currentIndex = playlist.findIndex((i) => i.id === currentId);
+    const prevIndex = currentIndex === -1 ? 0 : (currentIndex - 1 + playlist.length) % playlist.length;
+    await this.playAmbientSong(playlist[prevIndex].id, true);
+  }
+
+  // ---- Background (section 3) --------------------------------------------
+
+  private blobUrlForPad(pad: PadAssignment): string | null {
+    if (!pad.libraryId) return null;
+    const cached = this.bgObjectUrls.get(pad.libraryId);
+    if (cached) return cached;
+    const item = useLibraryStore.getState().items.find((i) => i.id === pad.libraryId);
+    if (!item) return null;
+    const url = URL.createObjectURL(item.blob);
+    this.bgObjectUrls.set(pad.libraryId, url);
+    return url;
+  }
+
+  async triggerBackgroundPad(pad: PadAssignment, crossfadeSec?: number): Promise<void> {
+    if (!pad.libraryId) return;
+    await this.ensureStarted();
+    const url = this.blobUrlForPad(pad);
+    if (!url) {
+      useToastStore.getState().push(`Couldn't find "${pad.label ?? 'that song'}" in the library.`);
+      return;
+    }
+    try {
+      await this.background!.playPad(pad, url, dbToGain(pad.trimDb ?? 0), crossfadeSec);
+    } catch {
+      useToastStore.getState().push(`Couldn't play "${pad.label ?? 'that song'}" — the file may be unsupported.`);
     }
   }
 
@@ -584,33 +579,20 @@ class AudioEngine {
 
   toggleBackgroundLoop(): void {
     this.background?.toggleLoop();
+    const padId = this.background?.playingPadId;
+    if (padId) {
+      const looping = usePlaybackStore.getState().bgLooping;
+      void useSetStore.getState().updatePad(padId, { tag: looping ? 'LOOP' : 'ONCE' });
+    }
   }
 
-  toggleBackgroundShuffle(): void {
-    const next = !usePlaybackStore.getState().bgShuffle;
-    usePlaybackStore.getState().setBgShuffle(next);
-    this.bgShuffleOrder = next ? shuffleIds(useLibraryStore.getState().items.map((i) => i.id)) : null;
-  }
-
-  /** Plays the song after `afterId` (defaults to whatever's currently
-   * playing) in the current playlist order. Used by the Next button and by
-   * BackgroundEngine's onEnded hook for auto-advance. */
-  async nextBackgroundSong(afterId?: string): Promise<void> {
-    const playlist = this.getBgPlaylist();
-    if (playlist.length === 0) return;
-    const currentId = afterId ?? this.background?.playingPadId ?? null;
-    const currentIndex = playlist.findIndex((i) => i.id === currentId);
-    const next = playlist[(currentIndex + 1) % playlist.length];
-    await this.playBackgroundSong(next.id, true);
-  }
-
-  async previousBackgroundSong(): Promise<void> {
-    const playlist = this.getBgPlaylist();
-    if (playlist.length === 0) return;
+  async nextBackgroundPad(pads: PadAssignment[]): Promise<void> {
+    const assigned = pads.filter((p) => p.libraryId);
+    if (assigned.length === 0) return;
     const currentId = this.background?.playingPadId ?? null;
-    const currentIndex = playlist.findIndex((i) => i.id === currentId);
-    const prevIndex = currentIndex === -1 ? 0 : (currentIndex - 1 + playlist.length) % playlist.length;
-    await this.playBackgroundSong(playlist[prevIndex].id, true);
+    const currentIndex = assigned.findIndex((p) => p.id === currentId);
+    const next = assigned[(currentIndex + 1) % assigned.length];
+    await this.triggerBackgroundPad(next);
   }
 
   // ---- Global transport ---------------------------------------------------
@@ -641,12 +623,8 @@ class AudioEngine {
     for (const padId of [...this.sfxVoices.keys()]) this.stopSfxVoice(padId, 0.01);
     for (const padId of [...this.clipVoices.keys()]) this.stopClipVoice(padId, 0.01);
     this.stopAudition();
-    for (const [key, voice] of this.ambientVoicesByKey) {
-      voice.dispose();
-      this.ambientVoicesByKey.delete(key);
-    }
-    usePlaybackStore.getState().setAmbientKey(null);
     this.background?.hardStop();
+    this.ambientPlayer?.hardStop();
   }
 }
 

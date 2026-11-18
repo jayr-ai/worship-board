@@ -1,8 +1,11 @@
-// Section 3 (Background): two decks of <audio>, each routed into the Web
-// Audio graph via createMediaElementSource so the bg bus fader/mute/duck
-// apply to it, with an equal-power crossfade between them (6.3).
+// A reusable two-deck <audio> player, each routed into the Web Audio graph
+// via createMediaElementSource so a bus's fader/mute/duck apply to it, with
+// an equal-power crossfade between them (6.3). Used for both the Background
+// section's pad-based player and the Ambient Pads folder-scoped player -
+// state writes go through the onStateChange/onLoopChange callbacks instead
+// of a hardcoded store, so two independent instances don't stomp on the
+// same playback state.
 import type { PadAssignment } from '../types';
-import { usePlaybackStore } from '../store/usePlaybackStore';
 
 const DEFAULT_CROSSFADE_SEC = 4;
 const STOP_FADE_SEC = 1;
@@ -46,9 +49,19 @@ export class BackgroundEngine {
   private deckPadId: [string | null, string | null] = [null, null];
   private deckTargetGain: [number, number] = [1, 1];
   private onEnded?: (endedLibraryId: string) => void;
+  private onStateChange: (padId: string | null, playing: boolean) => void;
+  private onLoopChange: (looping: boolean) => void;
 
-  constructor(ctx: AudioContext, destination: AudioNode, onEnded?: (endedLibraryId: string) => void) {
+  constructor(
+    ctx: AudioContext,
+    destination: AudioNode,
+    onStateChange: (padId: string | null, playing: boolean) => void,
+    onLoopChange: (looping: boolean) => void,
+    onEnded?: (endedLibraryId: string) => void,
+  ) {
     this.ctx = ctx;
+    this.onStateChange = onStateChange;
+    this.onLoopChange = onLoopChange;
     this.onEnded = onEnded;
     this.decks = [this.createDeck(destination), this.createDeck(destination)];
   }
@@ -74,7 +87,7 @@ export class BackgroundEngine {
     if (active.audio !== audio) return;
     const endedId = this.currentPadId;
     this.currentPadId = null;
-    usePlaybackStore.getState().setBackground(null, false);
+    this.onStateChange(null, false);
     // Auto-advance to the next song in the playlist (the caller - see
     // AudioEngine.nextBackgroundSong - decides what "next" means, e.g.
     // respecting shuffle); this engine only knows playback finished.
@@ -123,7 +136,7 @@ export class BackgroundEngine {
     nextDeck.audio.loop = loop;
     nextDeck.audio.currentTime = 0;
     this.looping = loop;
-    usePlaybackStore.getState().setBgLooping(loop);
+    this.onLoopChange(loop);
     // Cancel first: a rapid re-trigger can land on a deck that still has a
     // setValueCurveAtTime automation in flight from its last crossfade, and
     // setValueAtTime on top of that throws NotSupportedError.
@@ -144,7 +157,7 @@ export class BackgroundEngine {
 
     this.activeDeckIndex = nextIndex;
     this.currentPadId = pad.id;
-    usePlaybackStore.getState().setBackground(pad.id, true);
+    this.onStateChange(pad.id, true);
   }
 
   stop(fadeSec = STOP_FADE_SEC): void {
@@ -157,7 +170,7 @@ export class BackgroundEngine {
     const audio = deck.audio;
     window.setTimeout(() => audio.pause(), fadeSec * 1000 + 50);
     this.currentPadId = null;
-    usePlaybackStore.getState().setBackground(null, false);
+    this.onStateChange(null, false);
   }
 
   /** Immediate stop for the global Stop All control. */
@@ -168,7 +181,7 @@ export class BackgroundEngine {
       deck.gain.gain.setValueAtTime(0, this.ctx.currentTime);
     }
     this.currentPadId = null;
-    usePlaybackStore.getState().setBackground(null, false);
+    this.onStateChange(null, false);
   }
 
   togglePlayPause(): void {
@@ -176,16 +189,16 @@ export class BackgroundEngine {
     const audio = this.decks[this.activeDeckIndex].audio;
     if (audio.paused) {
       void audio.play();
-      usePlaybackStore.getState().setBackground(this.currentPadId, true);
+      this.onStateChange(this.currentPadId, true);
     } else {
       audio.pause();
-      usePlaybackStore.getState().setBackground(this.currentPadId, false);
+      this.onStateChange(this.currentPadId, false);
     }
   }
 
   toggleLoop(): void {
     this.looping = !this.looping;
     this.decks[this.activeDeckIndex].audio.loop = this.looping;
-    usePlaybackStore.getState().setBgLooping(this.looping);
+    this.onLoopChange(this.looping);
   }
 }

@@ -45,11 +45,16 @@ export interface SetData {
   sfxBankA: PadAssignment[];
   sfxBankB: PadAssignment[];
   bgPads: PadAssignment[];
-  /** Optional per-key custom audio override (section 4.4); empty libraryId
-   * means "use the built-in synth" for that key. */
+  /** Kept for backward compatibility with older exported backups - no
+   * longer read or written now that Ambient Pads is a folder-scoped song
+   * player (see ambientSongFolderId) instead of a per-key synth drone. */
   ambientPads: PadAssignment[];
   ambientQuality: 'major' | 'minor';
   ambientPack: 'warm' | 'airy';
+  /** Which Library folder populates the Ambient Pads player; null means no
+   * folder has been chosen yet (the player shows an empty "pick a folder"
+   * state rather than falling back to every song in the Library). */
+  ambientSongFolderId: string | null;
   exclusiveClips: boolean;
   defaultClipFadeOutSec: number;
   createdAt: number;
@@ -155,6 +160,7 @@ function getDB(): Promise<IDBPDatabase<WorshipBoardDB>> {
                 ),
                 ambientQuality: 'major',
                 ambientPack: 'warm',
+                ambientSongFolderId: null,
                 exclusiveClips: true,
                 defaultClipFadeOutSec: 3,
                 createdAt: now,

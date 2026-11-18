@@ -79,6 +79,7 @@ export function createDefaultSetData(id: string, name: string): SetData {
     ambientPads: createEmptyAmbientPads(),
     ambientQuality: 'major',
     ambientPack: 'warm',
+    ambientSongFolderId: null,
     exclusiveClips: true,
     defaultClipFadeOutSec: 3,
     createdAt: now,
