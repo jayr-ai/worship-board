@@ -1,0 +1,193 @@
+.bgplayer {
+  width: 386px;
+  flex-shrink: 0;
+  height: 100%;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 0.2s;
+  box-shadow: 0 0 28px -14px rgba(var(--accent-primary-rgb), 0.5);
+}
+
+.bgplayer--muted {
+  opacity: 0.55;
+}
+
+.bgplayer__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bgplayer__badge {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+  background: var(--sky-a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif;
+  color: #0a0a0a;
+}
+
+.bgplayer__heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.bgplayer__title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: 0.05em;
+  margin: 0;
+  line-height: 1.1;
+  color: var(--sky-a);
+}
+
+.bgplayer__subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.bgplayer__body {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  min-height: 0;
+}
+
+.bgplayer__left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 80% of the section's height is the scrollable song list, 20% is the
+   transport row - see the flex-grow split below. */
+.bgplayer__list {
+  flex: 4 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bgplayer__row {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.bgplayer__row--active {
+  background: rgba(var(--sky-rgb), 0.16);
+  border-color: var(--sky-a);
+  color: var(--sky-a);
+}
+
+.bgplayer__row-icon {
+  flex-shrink: 0;
+}
+
+.bgplayer__row-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bgplayer__row-duration {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.bgplayer__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.bgplayer__empty-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--tile-bg);
+  border: 1px solid var(--sky-a);
+  color: var(--sky-a);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bgplayer__transport {
+  flex: 1 1 0;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.bgplayer__icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bgplayer__icon-btn--active {
+  background: var(--sky-a);
+  border-color: var(--sky-a);
+  color: #0a0a0a;
+}
+
+/* The big center transport button gets the same "lit pad" radial
+   treatment as Pad.css's .pad--assigned, so it reads as part of the same
+   luminous button language as the rest of the app. */
+.bgplayer__play {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: radial-gradient(circle at 50% 50%, var(--sky-hi) 0%, var(--sky-a) 55%, var(--sky-b) 100%);
+  border: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  color: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -11,6 +11,7 @@ import { getAmbientCustomBuffer } from './ambientBuffers';
 import { WakeLockManager } from './wakeLock';
 import { createSilentAudioElement } from './silentAudio';
 import { BackgroundEngine } from './BackgroundEngine';
+import { shuffleIds } from './shuffle';
 import { useLibraryStore } from '../store/useLibraryStore';
 import { useSetStore } from '../store/useSetStore';
 import { decodeLibraryItem, getTrimmedClipBuffer } from './clipBuffers';
@@ -152,7 +153,9 @@ class AudioEngine {
     this.reverbConvolver.buffer = createReverbImpulse(ctx);
     this.reverbConvolver.connect(this.buses.ambient.input);
 
-    this.background = new BackgroundEngine(ctx, this.buses.bg.input);
+    this.background = new BackgroundEngine(ctx, this.buses.bg.input, (endedId) =>
+      void this.nextBackgroundSong(endedId),
+    );
   }
 
   private createBus(ctx: AudioContext, withDuck: boolean): Bus {
@@ -531,31 +534,47 @@ class AudioEngine {
     this.ambientPack = pack;
   }
 
-  // ---- Background (section 3) --------------------------------------------
+  // ---- Background (section 3): a library-wide playlist, not fixed pad
+  // slots - every imported song shows up and plays straight from the
+  // Library, sorted alphabetically (or shuffled - see bgShuffleOrder). ----
 
-  private blobUrlForPad(pad: PadAssignment): string | null {
-    if (!pad.libraryId) return null;
-    const cached = this.bgObjectUrls.get(pad.libraryId);
+  private bgShuffleOrder: string[] | null = null;
+
+  private blobUrlForLibraryId(libraryId: string): string | null {
+    const cached = this.bgObjectUrls.get(libraryId);
     if (cached) return cached;
-    const item = useLibraryStore.getState().items.find((i) => i.id === pad.libraryId);
+    const item = useLibraryStore.getState().items.find((i) => i.id === libraryId);
     if (!item) return null;
     const url = URL.createObjectURL(item.blob);
-    this.bgObjectUrls.set(pad.libraryId, url);
+    this.bgObjectUrls.set(libraryId, url);
     return url;
   }
 
-  async triggerBackgroundPad(pad: PadAssignment, crossfadeSec?: number): Promise<void> {
-    if (!pad.libraryId) return;
+  /** The current playlist order: alphabetical, or a shuffled order that's
+   * re-rolled each time shuffle is turned on (see toggleBackgroundShuffle). */
+  private getBgPlaylist(): { id: string; label: string }[] {
+    const items = useLibraryStore.getState().items;
+    const sorted = [...items].sort((a, b) => a.label.localeCompare(b.label));
+    if (!usePlaybackStore.getState().bgShuffle) return sorted;
+    if (!this.bgShuffleOrder) this.bgShuffleOrder = shuffleIds(sorted.map((i) => i.id));
+    const byId = new Map(sorted.map((i) => [i.id, i]));
+    return this.bgShuffleOrder.map((id) => byId.get(id)).filter((i): i is (typeof sorted)[number] => !!i);
+  }
+
+  async playBackgroundSong(libraryId: string, forceRestart = false): Promise<void> {
     await this.ensureStarted();
-    const url = this.blobUrlForPad(pad);
+    const item = useLibraryStore.getState().items.find((i) => i.id === libraryId);
+    const url = this.blobUrlForLibraryId(libraryId);
     if (!url) {
-      useToastStore.getState().push(`Couldn't find "${pad.label ?? 'that song'}" in the library.`);
+      useToastStore.getState().push(`Couldn't find "${item?.label ?? 'that song'}" in the library.`);
       return;
     }
+    const looping = usePlaybackStore.getState().bgLooping;
+    const pad: PadAssignment = { id: libraryId, libraryId, tag: looping ? 'LOOP' : 'ONCE' };
     try {
-      await this.background!.playPad(pad, url, dbToGain(pad.trimDb ?? 0), crossfadeSec);
+      await this.background!.playPad(pad, url, 1, 4, forceRestart);
     } catch {
-      useToastStore.getState().push(`Couldn't play "${pad.label ?? 'that song'}" — the file may be unsupported.`);
+      useToastStore.getState().push(`Couldn't play "${item?.label ?? 'that song'}" — the file may be unsupported.`);
     }
   }
 
@@ -565,20 +584,33 @@ class AudioEngine {
 
   toggleBackgroundLoop(): void {
     this.background?.toggleLoop();
-    const padId = this.background?.playingPadId;
-    if (padId) {
-      const looping = usePlaybackStore.getState().bgLooping;
-      void useSetStore.getState().updatePad(padId, { tag: looping ? 'LOOP' : 'ONCE' });
-    }
   }
 
-  async nextBackgroundPad(pads: PadAssignment[]): Promise<void> {
-    const assigned = pads.filter((p) => p.libraryId);
-    if (assigned.length === 0) return;
+  toggleBackgroundShuffle(): void {
+    const next = !usePlaybackStore.getState().bgShuffle;
+    usePlaybackStore.getState().setBgShuffle(next);
+    this.bgShuffleOrder = next ? shuffleIds(useLibraryStore.getState().items.map((i) => i.id)) : null;
+  }
+
+  /** Plays the song after `afterId` (defaults to whatever's currently
+   * playing) in the current playlist order. Used by the Next button and by
+   * BackgroundEngine's onEnded hook for auto-advance. */
+  async nextBackgroundSong(afterId?: string): Promise<void> {
+    const playlist = this.getBgPlaylist();
+    if (playlist.length === 0) return;
+    const currentId = afterId ?? this.background?.playingPadId ?? null;
+    const currentIndex = playlist.findIndex((i) => i.id === currentId);
+    const next = playlist[(currentIndex + 1) % playlist.length];
+    await this.playBackgroundSong(next.id, true);
+  }
+
+  async previousBackgroundSong(): Promise<void> {
+    const playlist = this.getBgPlaylist();
+    if (playlist.length === 0) return;
     const currentId = this.background?.playingPadId ?? null;
-    const currentIndex = assigned.findIndex((p) => p.id === currentId);
-    const next = assigned[(currentIndex + 1) % assigned.length];
-    await this.triggerBackgroundPad(next);
+    const currentIndex = playlist.findIndex((i) => i.id === currentId);
+    const prevIndex = currentIndex === -1 ? 0 : (currentIndex - 1 + playlist.length) % playlist.length;
+    await this.playBackgroundSong(playlist[prevIndex].id, true);
   }
 
   // ---- Global transport ---------------------------------------------------

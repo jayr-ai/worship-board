@@ -45,9 +45,11 @@ export class BackgroundEngine {
    * both decks during a crossfade handoff (5.3). */
   private deckPadId: [string | null, string | null] = [null, null];
   private deckTargetGain: [number, number] = [1, 1];
+  private onEnded?: (endedLibraryId: string) => void;
 
-  constructor(ctx: AudioContext, destination: AudioNode) {
+  constructor(ctx: AudioContext, destination: AudioNode, onEnded?: (endedLibraryId: string) => void) {
     this.ctx = ctx;
+    this.onEnded = onEnded;
     this.decks = [this.createDeck(destination), this.createDeck(destination)];
   }
 
@@ -70,9 +72,13 @@ export class BackgroundEngine {
   private handleEnded(audio: HTMLAudioElement): void {
     const active = this.decks[this.activeDeckIndex];
     if (active.audio !== audio) return;
-    // Default "after a song ends" behavior: stop, no auto-advance.
+    const endedId = this.currentPadId;
     this.currentPadId = null;
     usePlaybackStore.getState().setBackground(null, false);
+    // Auto-advance to the next song in the playlist (the caller - see
+    // AudioEngine.nextBackgroundSong - decides what "next" means, e.g.
+    // respecting shuffle); this engine only knows playback finished.
+    if (endedId) this.onEnded?.(endedId);
   }
 
   get playingPadId(): string | null {
@@ -92,14 +98,17 @@ export class BackgroundEngine {
   }
 
   /** Tap a Background pad: starts it, crossfades from whatever's playing, or
-   * stops it if it's the pad already sounding. */
+   * stops it if it's the pad already sounding - unless `forceRestart` is
+   * set, which Next/Previous use so a single-song playlist (where "next"
+   * lands back on the same id) restarts the song instead of stopping it. */
   async playPad(
     pad: PadAssignment,
     blobUrl: string,
     targetGain = 1,
     crossfadeSec = DEFAULT_CROSSFADE_SEC,
+    forceRestart = false,
   ): Promise<void> {
-    if (this.currentPadId === pad.id) {
+    if (this.currentPadId === pad.id && !forceRestart) {
       this.stop();
       return;
     }
